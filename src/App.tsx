@@ -10,6 +10,7 @@ import AuthCallback from "@/pages/AuthCallback";
 import Onboarding from "@/pages/Onboarding";
 import Dashboard from "@/pages/Dashboard";
 import Shopping from "@/pages/Shopping";
+import Notebook from "@/pages/Notebook";
 import NotFound from "@/pages/NotFound";
 import AppLayout from "@/components/AppLayout";
 
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
         <Route path="/shopping" element={<Protected><Shopping /></Protected>} />
+        <Route path="/notebook" element={<Protected><Notebook /></Protected>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AnimatePresence>
