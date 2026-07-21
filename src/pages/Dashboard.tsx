@@ -1,36 +1,38 @@
-import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { AlertTriangle, TrendingDown } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Plus, Trash2 } from "lucide-react";
 import PageTransition from "@/components/PageTransition";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { localDateISO, msUntilNextLocalMidnight, formatLongDate } from "@/lib/dates";
 
-interface Item {
-  id: string;
-  name: string;
-  status: string;
-  priority: string | null;
+interface Entry {
+  id?: string;
+  family_id?: string;
+  entry_date?: string;
+  sr_no: number;
+  item_name: string;
   quantity: number | null;
   unit: string | null;
-  category_id: string | null;
-  assigned_to: string | null;
-  created_at: string;
+  price: number | null;
+  bought: boolean;
 }
 
-interface Category {
-  id: string;
-  name: string;
-  icon: string | null;
-  color: string | null;
+interface Note {
+  id?: string;
+  slot_index: number;
+  content: string;
 }
 
-function greeting() {
+const UNITS = ["kg", "g", "pcs", "L", "mL", "pack"] as const;
+const MIN_ROWS = 5;
+
+function greetingText(name: string) {
   const h = new Date().getHours();
-  if (h < 12) return { text: "Good Morning", emoji: "☀️" };
-  if (h < 17) return { text: "Good Afternoon", emoji: "🌤️" };
-  if (h < 20) return { text: "Good Evening", emoji: "🌅" };
-  return { text: "Good Night", emoji: "🌙" };
+  const g =
+    h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : h < 20 ? "Good evening" : "Good night";
+  const emoji = h < 12 ? "☀️" : h < 17 ? "🌤️" : h < 20 ? "🌅" : "🌙";
+  return `${g}, ${name} ${emoji}`;
 }
 
 function useTypewriter(text: string, speed = 40, start = true) {
@@ -49,270 +51,467 @@ function useTypewriter(text: string, speed = 40, start = true) {
   return out;
 }
 
-function formatDate(d: Date) {
-  return d.toLocaleDateString("en-IN", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+function emptyRow(sr_no: number): Entry {
+  return { sr_no, item_name: "", quantity: null, unit: null, price: null, bought: false };
 }
 
 export default function Dashboard() {
   const { profile, user } = useAuth();
-  const navigate = useNavigate();
-  const [items, setItems] = useState<Item[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [budget, setBudget] = useState<number>(0);
-  const [spent, setSpent] = useState<number>(0);
-
   const firstName = profile?.full_name?.split(" ")[0] ?? "there";
-  const g = greeting();
-  const greetingText = `${g.text}, ${firstName} ${g.emoji}`;
-  const typed = useTypewriter(greetingText, 40, true);
-  const dateStr = formatDate(new Date());
-  const typedDate = useTypewriter(dateStr, 30, typed === greetingText);
+  const [today, setToday] = useState<string>(localDateISO());
 
+  const greet = greetingText(firstName);
+  const typed = useTypewriter(greet, 35, true);
+  const dateStr = formatLongDate(new Date());
+  const typedDate = useTypewriter(dateStr, 25, typed === greet);
+
+  const [rows, setRows] = useState<Entry[]>(() =>
+    Array.from({ length: MIN_ROWS }, (_, i) => emptyRow(i + 1)),
+  );
+  const [notes, setNotes] = useState<Note[]>(() =>
+    [0, 1, 2].map((i) => ({ slot_index: i, content: "" })),
+  );
+
+  const fid = profile?.family_id ?? null;
+
+  // Midnight rollover: recompute local date, which triggers a reload of the empty new day.
   useEffect(() => {
-    if (!profile?.family_id) return;
-    const fid = profile.family_id;
+    const t = setTimeout(() => setToday(localDateISO()), msUntilNextLocalMidnight());
+    return () => clearTimeout(t);
+  }, [today]);
 
-    const loadItems = async () => {
+  // Load + realtime subscribe for today's entries and notes
+  useEffect(() => {
+    if (!fid) return;
+
+    let cancelled = false;
+
+    const loadEntries = async () => {
       const { data } = await supabase
-        .from("items")
+        .from("notebook_entries")
         .select("*")
         .eq("family_id", fid)
-        .order("created_at", { ascending: false });
-      setItems((data as Item[]) ?? []);
+        .eq("entry_date", today)
+        .order("sr_no");
+      if (cancelled) return;
+      const byNo = new Map<number, Entry>();
+      (data as Entry[] | null)?.forEach((r) => byNo.set(r.sr_no, r));
+      const maxNo = Math.max(MIN_ROWS, ...Array.from(byNo.keys(), (n) => n));
+      const merged: Entry[] = [];
+      for (let i = 1; i <= maxNo; i++) merged.push(byNo.get(i) ?? emptyRow(i));
+      setRows(merged);
     };
-    const loadCats = async () => {
+
+    const loadNotes = async () => {
       const { data } = await supabase
-        .from("categories")
+        .from("notebook_notes")
         .select("*")
-        .eq("family_id", fid);
-      setCategories((data as Category[]) ?? []);
-    };
-    const loadBudget = async () => {
-      const now = new Date();
-      const { data } = await supabase
-        .from("budgets")
-        .select("amount, spent")
         .eq("family_id", fid)
-        .eq("month", now.getMonth() + 1)
-        .eq("year", now.getFullYear())
-        .maybeSingle();
-      if (data) {
-        setBudget(Number(data.amount) || 0);
-        setSpent(Number(data.spent) || 0);
-      } else {
-        // fallback: use family monthly budget
-        const { data: fam } = await supabase
-          .from("families")
-          .select("monthly_budget")
-          .eq("id", fid)
-          .maybeSingle();
-        setBudget(Number(fam?.monthly_budget) || 0);
-
-        // sum purchase_history this month
-        const first = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const { data: hist } = await supabase
-          .from("purchase_history")
-          .select("cost")
-          .eq("family_id", fid)
-          .gte("purchased_at", first);
-        const s = (hist ?? []).reduce((acc: number, r: { cost: number | null }) => acc + (Number(r.cost) || 0), 0);
-        setSpent(s);
-      }
+        .eq("entry_date", today);
+      if (cancelled) return;
+      const bySlot = new Map<number, Note>();
+      (data as Note[] | null)?.forEach((n) => bySlot.set(n.slot_index, n));
+      setNotes([0, 1, 2].map((i) => bySlot.get(i) ?? { slot_index: i, content: "" }));
     };
 
-    loadItems();
-    loadCats();
-    loadBudget();
+    loadEntries();
+    loadNotes();
 
     const ch = supabase
-      .channel(`dashboard-${fid}`)
+      .channel(`notebook-${fid}-${today}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "items", filter: `family_id=eq.${fid}` },
-        loadItems,
+        {
+          event: "*",
+          schema: "public",
+          table: "notebook_entries",
+          filter: `family_id=eq.${fid}`,
+        },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as Entry;
+          if (row?.entry_date === today) loadEntries();
+        },
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "purchase_history", filter: `family_id=eq.${fid}` },
-        loadBudget,
+        {
+          event: "*",
+          schema: "public",
+          table: "notebook_notes",
+          filter: `family_id=eq.${fid}`,
+        },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { entry_date?: string };
+          if (row?.entry_date === today) loadNotes();
+        },
       )
       .subscribe();
 
     return () => {
+      cancelled = true;
       supabase.removeChannel(ch);
     };
-  }, [profile?.family_id]);
+  }, [fid, today]);
 
-  const active = items.filter((i) => i.status !== "stocked");
-  const urgent = active.filter((i) => i.priority === "urgent" || i.status === "urgent").length;
-  const lowStock = active.filter((i) => i.status === "low_stock").length;
-  const needed = active.length;
+  // Debounced upsert per row
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const budgetPct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+  const scheduleSaveRow = (r: Entry, delay = 400) => {
+    if (!fid || !user) return;
+    const key = `r-${r.sr_no}`;
+    clearTimeout(timers.current[key]);
+    timers.current[key] = setTimeout(async () => {
+      const hasContent =
+        r.item_name.trim() !== "" ||
+        r.quantity !== null ||
+        r.price !== null ||
+        r.bought ||
+        r.unit;
+      if (!hasContent && !r.id) return; // don't create empty rows
+      const payload = {
+        family_id: fid,
+        entry_date: today,
+        sr_no: r.sr_no,
+        item_name: r.item_name,
+        quantity: r.quantity,
+        unit: r.unit,
+        price: r.price,
+        bought: r.bought,
+        created_by: user.id,
+        updated_at: new Date().toISOString(),
+      };
+      await supabase
+        .from("notebook_entries")
+        .upsert(payload, { onConflict: "family_id,entry_date,sr_no" });
+    }, delay);
+  };
 
-  const recent = useMemo(() => active.slice(0, 5), [active]);
-  const mine = useMemo(
-    () => active.filter((i) => i.assigned_to === user?.id).slice(0, 5),
-    [active, user?.id],
+  const updateRow = (idx: number, patch: Partial<Entry>, immediate = false) => {
+    setRows((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], ...patch };
+      scheduleSaveRow(next[idx], immediate ? 0 : 400);
+      return next;
+    });
+  };
+
+  const addRow = () => {
+    setRows((prev) => [...prev, emptyRow(prev.length + 1)]);
+  };
+
+  const deleteRow = async (idx: number) => {
+    const r = rows[idx];
+    if (r.id) await supabase.from("notebook_entries").delete().eq("id", r.id);
+    setRows((prev) => {
+      // Keep at least MIN_ROWS; renumber the tail to keep sr_no contiguous locally.
+      const next = prev.filter((_, i) => i !== idx);
+      while (next.length < MIN_ROWS) next.push(emptyRow(next.length + 1));
+      return next.map((row, i) => ({ ...row, sr_no: i + 1 }));
+    });
+  };
+
+  const totalBought = useMemo(
+    () => rows.reduce((s, r) => (r.bought ? s + (Number(r.price) || 0) : s), 0),
+    [rows],
   );
+  const totalAll = useMemo(
+    () => rows.reduce((s, r) => s + (Number(r.price) || 0), 0),
+    [rows],
+  );
+  const boughtCount = rows.filter((r) => r.bought).length;
 
-  const catCounts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const i of active) if (i.category_id) map.set(i.category_id, (map.get(i.category_id) ?? 0) + 1);
-    return map;
-  }, [active]);
+  const saveNote = (slot: number, content: string) => {
+    setNotes((prev) => prev.map((n) => (n.slot_index === slot ? { ...n, content } : n)));
+    if (!fid || !user) return;
+    const key = `n-${slot}`;
+    clearTimeout(timers.current[key]);
+    timers.current[key] = setTimeout(async () => {
+      await supabase.from("notebook_notes").upsert(
+        {
+          family_id: fid,
+          entry_date: today,
+          slot_index: slot,
+          content,
+          updated_by: user.id,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "family_id,entry_date,slot_index" },
+      );
+    }, 500);
+  };
 
   return (
     <PageTransition>
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        {/* Notebook / Greeting */}
-        <div className="paper-dark rounded-xl px-14 py-8">
-          <h1 className="font-hand text-4xl md:text-5xl min-h-[1.2em]">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-5 space-y-5">
+        {/* Greeting notebook */}
+        <div className="paper-dark rounded-xl px-8 md:px-14 py-5 md:py-6">
+          <h1 className="font-hand text-3xl md:text-4xl min-h-[1.1em]">
             {typed}
-            {typed.length < greetingText.length && <span className="animate-pulse">|</span>}
+            {typed.length < greet.length && <span className="animate-pulse">|</span>}
           </h1>
-          <p className="font-hand text-2xl mt-3 opacity-80 min-h-[1.2em]">
+          <p className="font-hand text-xl md:text-2xl mt-1 opacity-80 min-h-[1.1em]">
             {typedDate}
           </p>
         </div>
 
-        {/* Stat boxes */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Items Needed"
-            value={needed}
-            color="#3ecf8e"
-            icon={<span className="text-3xl">📦</span>}
-            onClick={() => navigate("/shopping?tab=needed")}
-          />
-          <StatCard
-            label="Urgent"
-            value={urgent}
-            color="#ef4444"
-            icon={<AlertTriangle size={28} />}
-            onClick={() => navigate("/shopping?tab=urgent")}
-          />
-          <StatCard
-            label="Low Stock"
-            value={lowStock}
-            color="#f59e0b"
-            icon={<TrendingDown size={28} />}
-            onClick={() => navigate("/shopping?tab=low_stock")}
-          />
-          <StatCard
-            label="Budget Used"
-            value={`${budgetPct}%`}
-            sub={`₹${spent.toLocaleString("en-IN")} / ₹${budget.toLocaleString("en-IN")}`}
-            color="#7c3aed"
-            icon={<span className="text-3xl">💳</span>}
-            onClick={() => navigate("/budget")}
-          />
-        </div>
-
-        {/* Categories preview */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-white">Categories</h2>
-            <button onClick={() => navigate("/categories")} className="text-sm text-primary hover:underline">
-              All →
-            </button>
-          </div>
-          <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-            {categories.slice(0, 10).map((c, i) => {
-              const cnt = catCounts.get(c.id) ?? 0;
-              return (
-                <motion.button
-                  key={c.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  onClick={() => navigate(`/categories`)}
-                  className={`rounded-xl border p-4 text-left transition hover:scale-[1.03] ${
-                    cnt > 0 ? "border-primary/40 bg-primary/5 shadow-[0_0_0_1px_rgba(62,207,142,0.25)]" : "border-border bg-card"
-                  }`}
-                >
-                  <div className="text-2xl mb-1">{c.icon ?? "📦"}</div>
-                  <div className="text-sm font-medium text-white truncate">{c.name}</div>
-                  <div className={`mt-1 text-xs ${cnt > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                    {cnt} active
-                  </div>
-                </motion.button>
-              );
-            })}
-            {categories.length === 0 && (
-              <div className="col-span-full rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-                No categories yet.
+        {/* Instant Writing List */}
+        <section className="rounded-xl border border-border bg-card">
+          <header className="flex items-center justify-between px-5 py-3 border-b border-border">
+            <div>
+              <h2 className="text-sm font-semibold text-white">Instant Writing List</h2>
+              <p className="text-xs text-muted-foreground">
+                Shared live with your family · resets at midnight
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-muted-foreground">
+                Bought {boughtCount}/{rows.length}
               </div>
-            )}
+              <div className="text-sm font-semibold text-primary">
+                ₹{totalBought.toLocaleString("en-IN")}{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  / ₹{totalAll.toLocaleString("en-IN")}
+                </span>
+              </div>
+            </div>
+          </header>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="text-left font-medium px-3 py-2 w-10">#</th>
+                  <th className="text-left font-medium px-3 py-2">Item</th>
+                  <th className="text-left font-medium px-3 py-2 w-24">Qty</th>
+                  <th className="text-left font-medium px-3 py-2 w-32">Unit</th>
+                  <th className="text-left font-medium px-3 py-2 w-28">Price</th>
+                  <th className="text-center font-medium px-3 py-2 w-20">Bought</th>
+                  <th className="w-10" />
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence initial={false}>
+                  {rows.map((r, idx) => (
+                    <motion.tr
+                      key={r.sr_no}
+                      layout
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: 60 }}
+                      transition={{ duration: 0.18 }}
+                      className={`border-b border-border/60 group ${
+                        r.bought ? "bg-primary/5" : ""
+                      }`}
+                    >
+                      <td className="px-3 py-1.5 text-muted-foreground">{r.sr_no}</td>
+                      <td className="px-3 py-1.5">
+                        <input
+                          value={r.item_name}
+                          onChange={(e) => updateRow(idx, { item_name: e.target.value })}
+                          placeholder="Item name"
+                          className={`w-full bg-transparent outline-none text-white placeholder:text-muted-foreground/50 transition ${
+                            r.bought ? "line-through opacity-70" : ""
+                          }`}
+                        />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={r.quantity ?? ""}
+                          onChange={(e) =>
+                            updateRow(idx, {
+                              quantity: e.target.value === "" ? null : Number(e.target.value),
+                            })
+                          }
+                          placeholder="—"
+                          className="w-full bg-transparent outline-none text-white placeholder:text-muted-foreground/40"
+                        />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <UnitPicker
+                          value={r.unit}
+                          onChange={(u) => updateRow(idx, { unit: u }, true)}
+                        />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground text-xs">₹</span>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={r.price ?? ""}
+                            onChange={(e) =>
+                              updateRow(idx, {
+                                price: e.target.value === "" ? null : Number(e.target.value),
+                              })
+                            }
+                            placeholder="0"
+                            className="w-full bg-transparent outline-none text-white placeholder:text-muted-foreground/40"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-3 py-1.5 text-center">
+                        <BoughtCheck
+                          checked={r.bought}
+                          onChange={(v) => updateRow(idx, { bought: v }, true)}
+                        />
+                      </td>
+                      <td className="px-2 py-1.5 text-center">
+                        <button
+                          onClick={() => deleteRow(idx)}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
+                          title="Remove row"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="p-3 border-t border-border flex justify-center">
+            <button
+              onClick={addRow}
+              className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/5 transition"
+            >
+              <Plus size={14} /> Add row
+            </button>
           </div>
         </section>
 
-        {/* Recently added + Assigned to me */}
-        <section className="grid gap-4 md:grid-cols-2">
-          <ItemList title="Recently added" items={recent} />
-          <ItemList title="Assigned to me" items={mine} emptyText="Nothing assigned to you." />
+        {/* Shared notes */}
+        <section>
+          <h2 className="text-sm font-semibold text-white mb-2 px-1">Family Notes</h2>
+          <div className="grid gap-3 md:grid-cols-3">
+            {notes.map((n) => (
+              <NoteCard
+                key={n.slot_index}
+                value={n.content}
+                onChange={(v) => saveNote(n.slot_index, v)}
+                placeholder={
+                  n.slot_index === 0
+                    ? "Reminders…"
+                    : n.slot_index === 1
+                      ? "Menu ideas…"
+                      : "Anything to say to the family…"
+                }
+              />
+            ))}
+          </div>
         </section>
       </div>
     </PageTransition>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  sub,
-  color,
-  icon,
-  onClick,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  color: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-}) {
+function UnitPicker({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  const [custom, setCustom] = useState(false);
+  const isKnown = value == null || (UNITS as readonly string[]).includes(value);
+
+  useEffect(() => {
+    if (value && !isKnown) setCustom(true);
+  }, [value, isKnown]);
+
+  if (custom) {
+    return (
+      <input
+        autoFocus
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        onBlur={() => {
+          if (!value) setCustom(false);
+        }}
+        placeholder="custom"
+        className="w-full bg-muted/40 rounded px-1.5 py-0.5 outline-none text-white text-xs"
+      />
+    );
+  }
+
   return (
-    <motion.button
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.98 }}
-      onClick={onClick}
-      className="relative overflow-hidden rounded-xl border border-border bg-card p-5 text-left transition"
-      style={{ boxShadow: `inset 0 0 0 1px ${color}22` }}
+    <select
+      value={isKnown ? value ?? "" : ""}
+      onChange={(e) => {
+        if (e.target.value === "__other__") {
+          setCustom(true);
+          onChange("");
+        } else {
+          onChange(e.target.value || null);
+        }
+      }}
+      className="w-full bg-transparent outline-none text-white text-xs cursor-pointer"
     >
-      <div className="absolute top-4 right-4 opacity-80" style={{ color }}>
-        {icon}
-      </div>
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="text-3xl font-bold text-white mt-2" style={{ color }}>{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-    </motion.button>
+      <option value="" className="bg-card">
+        —
+      </option>
+      {UNITS.map((u) => (
+        <option key={u} value={u} className="bg-card">
+          {u}
+        </option>
+      ))}
+      <option value="__other__" className="bg-card">
+        Other…
+      </option>
+    </select>
   );
 }
 
-function ItemList({ title, items, emptyText }: { title: string; items: Item[]; emptyText?: string }) {
+function BoughtCheck({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <h3 className="text-sm font-semibold text-white mb-3">{title}</h3>
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{emptyText ?? "Nothing here yet."}</p>
-      ) : (
-        <ul className="space-y-2">
-          {items.map((i) => (
-            <li key={i.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
-              <span className="text-sm text-white">{i.name}</span>
-              <span className="text-xs text-muted-foreground">
-                {i.quantity ?? ""} {i.unit ?? ""}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+    <button
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-5 w-5 items-center justify-center rounded border transition ${
+        checked
+          ? "bg-primary border-primary"
+          : "border-border hover:border-primary/60"
+      }`}
+      aria-pressed={checked}
+    >
+      <AnimatePresence>
+        {checked && (
+          <motion.svg
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            viewBox="0 0 24 24"
+            className="h-3.5 w-3.5 text-primary-foreground"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </motion.svg>
+        )}
+      </AnimatePresence>
+    </button>
+  );
+}
+
+function NoteCard({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="paper-dark rounded-xl px-10 py-4 min-h-[140px]">
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={5}
+        className="w-full bg-transparent outline-none resize-none font-hand text-xl leading-[40px] placeholder:opacity-40"
+        style={{ color: "#e8d5b0" }}
+      />
     </div>
   );
 }
