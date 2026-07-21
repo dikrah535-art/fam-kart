@@ -117,7 +117,7 @@ export default function Onboarding() {
                   </p>
                 </div>
                 <Input
-                  placeholder="e.g. The Sharma Family"
+                  placeholder="e.g. The ABC Family"
                   value={familyName}
                   onChange={(e) => setFamilyName(e.target.value)}
                 />
