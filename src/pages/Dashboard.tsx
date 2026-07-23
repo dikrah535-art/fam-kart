@@ -395,27 +395,27 @@ export default function Dashboard() {
           </div>
 
           {/* Instant Writing List */}
-          <div className="pt-2">
+          <div className="pt-1 relative z-10">
             <div className="flex items-baseline justify-between mb-2">
-              <h2 className="font-hand text-2xl">Instant list</h2>
-              <div className="font-hand text-lg opacity-80">
+              <h2 className="font-hand text-2xl leading-tight">Instant list</h2>
+              <div className="font-sans text-xs opacity-80">
                 {boughtCount}/{rows.length} bought ·{" "}
                 <span className="text-primary">₹{totalBought.toLocaleString("en-IN")}</span>
                 <span className="opacity-60"> / ₹{totalAll.toLocaleString("en-IN")}</span>
               </div>
             </div>
 
-            <div className="overflow-x-auto -mx-2">
-              <table className="w-full text-sm font-hand">
-                <thead className="text-xs uppercase tracking-wider opacity-60">
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-sm">
+                <thead className="text-[10px] uppercase tracking-wider opacity-60 font-sans">
                   <tr className="border-b border-white/10">
-                    <th className="text-left font-medium px-2 py-2 w-10">#</th>
-                    <th className="text-left font-medium px-2 py-2">Item</th>
-                    <th className="text-left font-medium px-2 py-2 w-20">Qty</th>
-                    <th className="text-left font-medium px-2 py-2 w-24">Unit</th>
-                    <th className="text-left font-medium px-2 py-2 w-24">Price</th>
-                    <th className="text-center font-medium px-2 py-2 w-16">Bought</th>
-                    <th className="w-8" />
+                    <th className="text-left font-medium px-2 py-1.5 w-8">#</th>
+                    <th className="text-left font-medium px-2 py-1.5">Item</th>
+                    <th className="text-left font-medium px-2 py-1.5 w-16">Qty</th>
+                    <th className="text-left font-medium px-2 py-1.5 w-20">Unit</th>
+                    <th className="text-left font-medium px-2 py-1.5 w-20">Price</th>
+                    <th className="text-center font-medium px-2 py-1.5 w-14">Bought</th>
+                    <th className="w-6" />
                   </tr>
                 </thead>
                 <tbody>
@@ -428,20 +428,21 @@ export default function Dashboard() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, x: 60 }}
                         transition={{ duration: 0.18 }}
-                        className="border-b border-white/10 group"
+                        className="border-b border-white/10 group align-middle"
                       >
-                        <td className="px-2 py-1.5 opacity-60 text-lg">{r.sr_no}</td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-2 py-2 opacity-60 text-sm font-sans">{r.sr_no}</td>
+                        <td className="px-2 py-2">
                           <input
                             value={r.item_name}
                             onChange={(e) => updateRow(idx, { item_name: e.target.value })}
                             placeholder="Item name"
-                            className={`w-full bg-transparent outline-none text-lg placeholder:opacity-40 transition ${
+                            className={`w-full bg-transparent outline-none font-hand text-xl leading-none py-0.5 placeholder:opacity-40 transition ${
                               r.bought ? "line-through opacity-60" : ""
                             }`}
+                            style={{ color: "#e8d5b0" }}
                           />
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-2 py-2">
                           <input
                             type="number"
                             inputMode="decimal"
@@ -452,18 +453,18 @@ export default function Dashboard() {
                               })
                             }
                             placeholder="—"
-                            className="w-full bg-transparent outline-none text-lg placeholder:opacity-30"
+                            className="w-full bg-transparent outline-none font-sans text-sm leading-none py-0.5 placeholder:opacity-30"
                           />
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-2 py-2">
                           <UnitPicker
                             value={r.unit}
                             onChange={(u) => updateRow(idx, { unit: u }, true)}
                           />
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-2 py-2">
                           <div className="flex items-center gap-1">
-                            <span className="opacity-50 text-sm">₹</span>
+                            <span className="opacity-50 text-xs font-sans">₹</span>
                             <input
                               type="number"
                               inputMode="decimal"
@@ -474,20 +475,21 @@ export default function Dashboard() {
                                 })
                               }
                               placeholder="0"
-                              className="w-full bg-transparent outline-none text-lg placeholder:opacity-30"
+                              className="w-full bg-transparent outline-none font-sans text-sm leading-none py-0.5 placeholder:opacity-30"
                             />
                           </div>
                         </td>
-                        <td className="px-2 py-1.5 text-center">
+                        <td className="px-2 py-2 text-center">
                           <BoughtCheck
                             checked={r.bought}
                             onChange={(v) => updateRow(idx, { bought: v }, true)}
                           />
                         </td>
-                        <td className="px-1 py-1.5 text-center">
+                        <td className="px-1 py-2 text-center">
                           <button
+                            type="button"
                             onClick={() => deleteRow(idx)}
-                            className="opacity-0 group-hover:opacity-100 opacity-60 hover:text-destructive transition"
+                            className="opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-destructive transition"
                             title="Remove row"
                           >
                             <Trash2 size={14} />
@@ -500,10 +502,11 @@ export default function Dashboard() {
               </table>
             </div>
 
-            <div className="pt-3 flex justify-center">
+            <div className="pt-2 flex justify-center">
               <button
+                type="button"
                 onClick={addRow}
-                className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md opacity-70 hover:opacity-100 hover:text-primary transition font-hand"
+                className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1.5 rounded-md border border-white/10 opacity-80 hover:opacity-100 hover:border-primary/50 hover:text-primary transition"
               >
                 <Plus size={14} /> Add row
               </button>
