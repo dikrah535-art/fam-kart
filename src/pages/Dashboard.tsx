@@ -385,11 +385,11 @@ export default function Dashboard() {
         <section className="paper-dark rounded-2xl pl-16 pr-6 md:pr-10 py-5 space-y-4">
           {/* Greeting */}
           <div>
-            <h1 className="font-hand text-3xl md:text-4xl min-h-[1.1em]">
+            <h1 className="font-hand text-3xl md:text-4xl leading-tight min-h-[1.2em]">
               {typed}
               {typed.length < greet.length && <span className="animate-pulse">|</span>}
             </h1>
-            <p className="font-hand text-xl md:text-2xl mt-1 opacity-80 min-h-[1.1em]">
+            <p className="font-hand text-lg md:text-xl mt-0.5 opacity-80 leading-tight min-h-[1.2em]">
               {typedDate}
             </p>
           </div>
