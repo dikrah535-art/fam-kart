@@ -11,6 +11,9 @@ import Onboarding from "@/pages/Onboarding";
 import Dashboard from "@/pages/Dashboard";
 import Shopping from "@/pages/Shopping";
 import Notebook from "@/pages/Notebook";
+import Todo from "@/pages/Todo";
+import History from "@/pages/History";
+import Budget from "@/pages/Budget";
 import NotFound from "@/pages/NotFound";
 import AppLayout from "@/components/AppLayout";
 
@@ -46,6 +49,9 @@ export default function App() {
         <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
         <Route path="/shopping" element={<Protected><Shopping /></Protected>} />
         <Route path="/notebook" element={<Protected><Notebook /></Protected>} />
+        <Route path="/todo" element={<Protected><Todo /></Protected>} />
+        <Route path="/history" element={<Protected><History /></Protected>} />
+        <Route path="/budget" element={<Protected><Budget /></Protected>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AnimatePresence>
