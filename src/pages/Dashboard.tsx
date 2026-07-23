@@ -380,9 +380,9 @@ export default function Dashboard() {
 
   return (
     <PageTransition>
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-5 space-y-5">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-4 space-y-4">
         {/* Unified Family Notebook */}
-        <section className="paper-dark rounded-2xl px-6 md:px-14 py-6 md:py-8 space-y-6">
+        <section className="paper-dark rounded-2xl pl-16 pr-6 md:pr-10 py-5 space-y-4">
           {/* Greeting */}
           <div>
             <h1 className="font-hand text-3xl md:text-4xl min-h-[1.1em]">
