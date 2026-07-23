@@ -548,37 +548,36 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Tasks */}
+          {/* Quick tasks — single line entry, links to /todo */}
           <div className="pt-1 relative z-10">
             <div className="flex items-baseline justify-between mb-1">
-              <h2 className="font-hand text-2xl leading-tight">Tasks</h2>
-              <span className="font-sans text-xs opacity-60">
-                {tasks.filter((t) => !t.completed).length} pending
-              </span>
+              <h2 className="font-hand text-2xl leading-tight">Quick task</h2>
+              <a href="/todo" className="font-sans text-xs opacity-70 hover:text-primary transition">
+                {tasks.filter((t) => !t.completed).length} pending · View all →
+              </a>
             </div>
-            <div>
-              <AnimatePresence initial={false}>
-                {tasks.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    onToggle={() => toggleTask(t)}
-                    onChange={(v) => updateTaskTitle(t.id, v)}
-                    onDelete={() => deleteTask(t.id)}
-                  />
-                ))}
-              </AnimatePresence>
-              {tasks.length === 0 && (
-                <p className="font-hand text-lg opacity-40 py-1">No tasks yet — add one below.</p>
-              )}
-            </div>
-            <div className="pt-2 flex justify-center">
+            <div className="flex items-center gap-2">
+              <Circle size={18} className="opacity-50 shrink-0" />
+              <input
+                type="text"
+                placeholder="Type and press Enter to add a task…"
+                onKeyDown={async (e) => {
+                  if (e.key === "Enter" && e.currentTarget.value.trim() && fid && user) {
+                    const title = e.currentTarget.value.trim();
+                    e.currentTarget.value = "";
+                    await supabase.from("notebook_tasks").insert({ family_id: fid, title, created_by: user.id });
+                  }
+                }}
+                className="flex-1 bg-transparent outline-none font-hand text-xl placeholder:opacity-40"
+                style={{ color: "#e8d5b0", height: "40px", lineHeight: "40px" }}
+              />
               <button
                 type="button"
                 onClick={addTask}
-                className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1.5 rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition"
+                className="inline-flex items-center gap-1 text-xs font-sans px-2.5 py-1 rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition"
+                title="Add empty task"
               >
-                <Plus size={14} /> Add task
+                <Plus size={12} />
               </button>
             </div>
           </div>
