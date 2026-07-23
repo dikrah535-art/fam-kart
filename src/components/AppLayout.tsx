@@ -12,6 +12,7 @@ import {
   LogOut,
 } from "lucide-react";
 import Logo from "@/components/Logo";
+import QuickAddFab from "@/components/QuickAddFab";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -102,6 +103,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </nav>
 
       <main className="lg:ml-64 min-h-screen pb-20 lg:pb-0">{children}</main>
+      <QuickAddFab />
     </div>
   );
 }
