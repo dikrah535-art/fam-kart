@@ -34,7 +34,7 @@ interface Category {
 }
 
 const UNITS = ["kg", "g", "pcs", "L", "mL", "pack"] as const;
-const MIN_ROWS = 5;
+const MIN_ROWS = 3;
 const MIN_NOTES = 3;
 const NOTE_PLACEHOLDERS = ["Reminders…", "Menu ideas…", "Anything to say to the family…"];
 
