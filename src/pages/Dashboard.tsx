@@ -514,9 +514,9 @@ export default function Dashboard() {
           </div>
 
           {/* Family Notes — stacked lines */}
-          <div className="pt-2">
-            <h2 className="font-hand text-2xl mb-2">Family notes</h2>
-            <div className="space-y-1">
+          <div className="pt-1 relative z-10">
+            <h2 className="font-hand text-2xl leading-tight mb-1">Family notes</h2>
+            <div>
               <AnimatePresence initial={false}>
                 {notes.map((n, i) => (
                   <motion.div
@@ -525,14 +525,13 @@ export default function Dashboard() {
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="border-b border-white/10"
                   >
                     <input
                       value={n.content}
                       onChange={(e) => saveNote(n.slot_index, e.target.value)}
                       placeholder={NOTE_PLACEHOLDERS[i] ?? "Another note…"}
-                      className="w-full bg-transparent outline-none font-hand text-xl py-2 placeholder:opacity-40"
-                      style={{ color: "#e8d5b0" }}
+                      className="w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40"
+                      style={{ color: "#e8d5b0", height: "40px", lineHeight: "40px", paddingBottom: "2px" }}
                     />
                   </motion.div>
                 ))}
@@ -540,8 +539,9 @@ export default function Dashboard() {
             </div>
             <div className="pt-2 flex justify-center">
               <button
+                type="button"
                 onClick={addNoteLine}
-                className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md opacity-70 hover:opacity-100 hover:text-primary transition font-hand"
+                className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1.5 rounded-md border border-white/10 opacity-80 hover:opacity-100 hover:border-primary/50 hover:text-primary transition"
               >
                 <Plus size={14} /> Add note line
               </button>
@@ -549,14 +549,14 @@ export default function Dashboard() {
           </div>
 
           {/* Tasks */}
-          <div className="pt-2">
-            <div className="flex items-baseline justify-between mb-2">
-              <h2 className="font-hand text-2xl">Tasks</h2>
-              <span className="font-hand text-sm opacity-60">
+          <div className="pt-1 relative z-10">
+            <div className="flex items-baseline justify-between mb-1">
+              <h2 className="font-hand text-2xl leading-tight">Tasks</h2>
+              <span className="font-sans text-xs opacity-60">
                 {tasks.filter((t) => !t.completed).length} pending
               </span>
             </div>
-            <div className="space-y-1">
+            <div>
               <AnimatePresence initial={false}>
                 {tasks.map((t) => (
                   <TaskRow
@@ -569,13 +569,14 @@ export default function Dashboard() {
                 ))}
               </AnimatePresence>
               {tasks.length === 0 && (
-                <p className="font-hand text-lg opacity-40 py-2">No tasks yet — add one below.</p>
+                <p className="font-hand text-lg opacity-40 py-1">No tasks yet — add one below.</p>
               )}
             </div>
             <div className="pt-2 flex justify-center">
               <button
+                type="button"
                 onClick={addTask}
-                className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md opacity-70 hover:opacity-100 hover:text-primary transition font-hand"
+                className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1.5 rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition"
               >
                 <Plus size={14} /> Add task
               </button>
