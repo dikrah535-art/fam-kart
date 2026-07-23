@@ -34,7 +34,7 @@ interface Category {
 }
 
 const UNITS = ["kg", "g", "pcs", "L", "mL", "pack"] as const;
-const MIN_ROWS = 5;
+const MIN_ROWS = 3;
 const MIN_NOTES = 3;
 const NOTE_PLACEHOLDERS = ["Reminders…", "Menu ideas…", "Anything to say to the family…"];
 
@@ -380,42 +380,42 @@ export default function Dashboard() {
 
   return (
     <PageTransition>
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-5 space-y-5">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-4 space-y-4">
         {/* Unified Family Notebook */}
-        <section className="paper-dark rounded-2xl px-6 md:px-14 py-6 md:py-8 space-y-6">
+        <section className="paper-dark rounded-2xl pl-16 pr-6 md:pr-10 py-5 space-y-4">
           {/* Greeting */}
           <div>
-            <h1 className="font-hand text-3xl md:text-4xl min-h-[1.1em]">
+            <h1 className="font-hand text-3xl md:text-4xl leading-tight min-h-[1.2em]">
               {typed}
               {typed.length < greet.length && <span className="animate-pulse">|</span>}
             </h1>
-            <p className="font-hand text-xl md:text-2xl mt-1 opacity-80 min-h-[1.1em]">
+            <p className="font-hand text-lg md:text-xl mt-0.5 opacity-80 leading-tight min-h-[1.2em]">
               {typedDate}
             </p>
           </div>
 
           {/* Instant Writing List */}
-          <div className="pt-2">
+          <div className="pt-1 relative z-10">
             <div className="flex items-baseline justify-between mb-2">
-              <h2 className="font-hand text-2xl">Instant list</h2>
-              <div className="font-hand text-lg opacity-80">
+              <h2 className="font-hand text-2xl leading-tight">Instant list</h2>
+              <div className="font-sans text-xs opacity-80">
                 {boughtCount}/{rows.length} bought ·{" "}
                 <span className="text-primary">₹{totalBought.toLocaleString("en-IN")}</span>
                 <span className="opacity-60"> / ₹{totalAll.toLocaleString("en-IN")}</span>
               </div>
             </div>
 
-            <div className="overflow-x-auto -mx-2">
-              <table className="w-full text-sm font-hand">
-                <thead className="text-xs uppercase tracking-wider opacity-60">
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-sm">
+                <thead className="text-[10px] uppercase tracking-wider opacity-60 font-sans">
                   <tr className="border-b border-white/10">
-                    <th className="text-left font-medium px-2 py-2 w-10">#</th>
-                    <th className="text-left font-medium px-2 py-2">Item</th>
-                    <th className="text-left font-medium px-2 py-2 w-20">Qty</th>
-                    <th className="text-left font-medium px-2 py-2 w-24">Unit</th>
-                    <th className="text-left font-medium px-2 py-2 w-24">Price</th>
-                    <th className="text-center font-medium px-2 py-2 w-16">Bought</th>
-                    <th className="w-8" />
+                    <th className="text-left font-medium px-2 py-1.5 w-8">#</th>
+                    <th className="text-left font-medium px-2 py-1.5">Item</th>
+                    <th className="text-left font-medium px-2 py-1.5 w-16">Qty</th>
+                    <th className="text-left font-medium px-2 py-1.5 w-20">Unit</th>
+                    <th className="text-left font-medium px-2 py-1.5 w-20">Price</th>
+                    <th className="text-center font-medium px-2 py-1.5 w-14">Bought</th>
+                    <th className="w-6" />
                   </tr>
                 </thead>
                 <tbody>
@@ -428,20 +428,21 @@ export default function Dashboard() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, x: 60 }}
                         transition={{ duration: 0.18 }}
-                        className="border-b border-white/10 group"
+                        className="border-b border-white/10 group align-middle"
                       >
-                        <td className="px-2 py-1.5 opacity-60 text-lg">{r.sr_no}</td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-2 py-2 opacity-60 text-sm font-sans">{r.sr_no}</td>
+                        <td className="px-2 py-2">
                           <input
                             value={r.item_name}
                             onChange={(e) => updateRow(idx, { item_name: e.target.value })}
                             placeholder="Item name"
-                            className={`w-full bg-transparent outline-none text-lg placeholder:opacity-40 transition ${
+                            className={`w-full bg-transparent outline-none font-hand text-xl leading-none py-0.5 placeholder:opacity-40 transition ${
                               r.bought ? "line-through opacity-60" : ""
                             }`}
+                            style={{ color: "#e8d5b0" }}
                           />
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-2 py-2">
                           <input
                             type="number"
                             inputMode="decimal"
@@ -452,18 +453,18 @@ export default function Dashboard() {
                               })
                             }
                             placeholder="—"
-                            className="w-full bg-transparent outline-none text-lg placeholder:opacity-30"
+                            className="w-full bg-transparent outline-none font-sans text-sm leading-none py-0.5 placeholder:opacity-30"
                           />
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-2 py-2">
                           <UnitPicker
                             value={r.unit}
                             onChange={(u) => updateRow(idx, { unit: u }, true)}
                           />
                         </td>
-                        <td className="px-2 py-1.5">
+                        <td className="px-2 py-2">
                           <div className="flex items-center gap-1">
-                            <span className="opacity-50 text-sm">₹</span>
+                            <span className="opacity-50 text-xs font-sans">₹</span>
                             <input
                               type="number"
                               inputMode="decimal"
@@ -474,20 +475,21 @@ export default function Dashboard() {
                                 })
                               }
                               placeholder="0"
-                              className="w-full bg-transparent outline-none text-lg placeholder:opacity-30"
+                              className="w-full bg-transparent outline-none font-sans text-sm leading-none py-0.5 placeholder:opacity-30"
                             />
                           </div>
                         </td>
-                        <td className="px-2 py-1.5 text-center">
+                        <td className="px-2 py-2 text-center">
                           <BoughtCheck
                             checked={r.bought}
                             onChange={(v) => updateRow(idx, { bought: v }, true)}
                           />
                         </td>
-                        <td className="px-1 py-1.5 text-center">
+                        <td className="px-1 py-2 text-center">
                           <button
+                            type="button"
                             onClick={() => deleteRow(idx)}
-                            className="opacity-0 group-hover:opacity-100 opacity-60 hover:text-destructive transition"
+                            className="opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-destructive transition"
                             title="Remove row"
                           >
                             <Trash2 size={14} />
@@ -500,10 +502,11 @@ export default function Dashboard() {
               </table>
             </div>
 
-            <div className="pt-3 flex justify-center">
+            <div className="pt-2 flex justify-center">
               <button
+                type="button"
                 onClick={addRow}
-                className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md opacity-70 hover:opacity-100 hover:text-primary transition font-hand"
+                className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1.5 rounded-md border border-white/10 opacity-80 hover:opacity-100 hover:border-primary/50 hover:text-primary transition"
               >
                 <Plus size={14} /> Add row
               </button>
@@ -511,9 +514,9 @@ export default function Dashboard() {
           </div>
 
           {/* Family Notes — stacked lines */}
-          <div className="pt-2">
-            <h2 className="font-hand text-2xl mb-2">Family notes</h2>
-            <div className="space-y-1">
+          <div className="pt-1 relative z-10">
+            <h2 className="font-hand text-2xl leading-tight mb-1">Family notes</h2>
+            <div>
               <AnimatePresence initial={false}>
                 {notes.map((n, i) => (
                   <motion.div
@@ -522,14 +525,13 @@ export default function Dashboard() {
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="border-b border-white/10"
                   >
                     <input
                       value={n.content}
                       onChange={(e) => saveNote(n.slot_index, e.target.value)}
                       placeholder={NOTE_PLACEHOLDERS[i] ?? "Another note…"}
-                      className="w-full bg-transparent outline-none font-hand text-xl py-2 placeholder:opacity-40"
-                      style={{ color: "#e8d5b0" }}
+                      className="w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40"
+                      style={{ color: "#e8d5b0", height: "40px", lineHeight: "40px", paddingBottom: "2px" }}
                     />
                   </motion.div>
                 ))}
@@ -537,8 +539,9 @@ export default function Dashboard() {
             </div>
             <div className="pt-2 flex justify-center">
               <button
+                type="button"
                 onClick={addNoteLine}
-                className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md opacity-70 hover:opacity-100 hover:text-primary transition font-hand"
+                className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1.5 rounded-md border border-white/10 opacity-80 hover:opacity-100 hover:border-primary/50 hover:text-primary transition"
               >
                 <Plus size={14} /> Add note line
               </button>
@@ -546,14 +549,14 @@ export default function Dashboard() {
           </div>
 
           {/* Tasks */}
-          <div className="pt-2">
-            <div className="flex items-baseline justify-between mb-2">
-              <h2 className="font-hand text-2xl">Tasks</h2>
-              <span className="font-hand text-sm opacity-60">
+          <div className="pt-1 relative z-10">
+            <div className="flex items-baseline justify-between mb-1">
+              <h2 className="font-hand text-2xl leading-tight">Tasks</h2>
+              <span className="font-sans text-xs opacity-60">
                 {tasks.filter((t) => !t.completed).length} pending
               </span>
             </div>
-            <div className="space-y-1">
+            <div>
               <AnimatePresence initial={false}>
                 {tasks.map((t) => (
                   <TaskRow
@@ -566,13 +569,14 @@ export default function Dashboard() {
                 ))}
               </AnimatePresence>
               {tasks.length === 0 && (
-                <p className="font-hand text-lg opacity-40 py-2">No tasks yet — add one below.</p>
+                <p className="font-hand text-lg opacity-40 py-1">No tasks yet — add one below.</p>
               )}
             </div>
             <div className="pt-2 flex justify-center">
               <button
+                type="button"
                 onClick={addTask}
-                className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md opacity-70 hover:opacity-100 hover:text-primary transition font-hand"
+                className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1.5 rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition"
               >
                 <Plus size={14} /> Add task
               </button>
@@ -713,41 +717,56 @@ function TaskRow({
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: 40 }}
-      className="flex items-center gap-2 border-b border-white/10 group"
+      className="flex items-center gap-2 group relative z-10"
     >
       <button
+        type="button"
         onClick={onToggle}
         className="p-1 shrink-0 transition-colors"
         aria-pressed={task.completed}
         title={task.completed ? "Mark incomplete" : "Task completed"}
         style={{ color: task.completed ? "#34d399" : undefined }}
       >
-        {task.completed ? <CheckCircle2 size={20} /> : <Circle size={20} className="opacity-60" />}
+        {task.completed ? <CheckCircle2 size={20} /> : <Circle size={18} className="opacity-60" />}
       </button>
 
-      <div className="relative flex-1 py-1.5">
+      <div className="relative flex-1">
         <input
           value={task.title}
           onChange={(e) => onChange(e.target.value)}
           placeholder="New task…"
           className={`w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40 transition-opacity ${
-            task.completed ? "opacity-60" : ""
+            task.completed ? "opacity-70" : ""
           }`}
-          style={{ color: "#e8d5b0" }}
+          style={{ color: "#e8d5b0", height: "36px", lineHeight: "36px" }}
         />
-        {/* Green strikethrough animation cutting across the text */}
-        <motion.div
-          initial={false}
-          animate={{ scaleX: task.completed ? 1 : 0 }}
-          transition={{ duration: 0.45, ease: "easeInOut" }}
-          className="pointer-events-none absolute left-0 right-0 top-1/2 h-[2px] origin-left rounded-full"
-          style={{ background: "#34d399", boxShadow: "0 0 8px #34d399" }}
-        />
+        {/* Green strikethrough animated line cutting across the text */}
+        <svg
+          className="pointer-events-none absolute left-0 right-0 top-1/2 -translate-y-1/2"
+          height="3"
+          width="100%"
+          preserveAspectRatio="none"
+        >
+          <motion.line
+            x1="0"
+            y1="1.5"
+            x2="100%"
+            y2="1.5"
+            stroke="#34d399"
+            strokeWidth="2"
+            strokeLinecap="round"
+            initial={false}
+            animate={{ pathLength: task.completed ? 1 : 0, opacity: task.completed ? 1 : 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            style={{ filter: "drop-shadow(0 0 4px #34d399)" }}
+          />
+        </svg>
       </div>
 
       <button
+        type="button"
         onClick={onDelete}
-        className="opacity-0 group-hover:opacity-60 hover:opacity-100 hover:text-destructive transition px-2"
+        className="opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-destructive transition px-2"
         title="Remove task"
       >
         <Trash2 size={14} />
