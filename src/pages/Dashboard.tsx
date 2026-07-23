@@ -717,41 +717,56 @@ function TaskRow({
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: 40 }}
-      className="flex items-center gap-2 border-b border-white/10 group"
+      className="flex items-center gap-2 group relative z-10"
     >
       <button
+        type="button"
         onClick={onToggle}
         className="p-1 shrink-0 transition-colors"
         aria-pressed={task.completed}
         title={task.completed ? "Mark incomplete" : "Task completed"}
         style={{ color: task.completed ? "#34d399" : undefined }}
       >
-        {task.completed ? <CheckCircle2 size={20} /> : <Circle size={20} className="opacity-60" />}
+        {task.completed ? <CheckCircle2 size={20} /> : <Circle size={18} className="opacity-60" />}
       </button>
 
-      <div className="relative flex-1 py-1.5">
+      <div className="relative flex-1">
         <input
           value={task.title}
           onChange={(e) => onChange(e.target.value)}
           placeholder="New task…"
           className={`w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40 transition-opacity ${
-            task.completed ? "opacity-60" : ""
+            task.completed ? "opacity-70" : ""
           }`}
-          style={{ color: "#e8d5b0" }}
+          style={{ color: "#e8d5b0", height: "36px", lineHeight: "36px" }}
         />
-        {/* Green strikethrough animation cutting across the text */}
-        <motion.div
-          initial={false}
-          animate={{ scaleX: task.completed ? 1 : 0 }}
-          transition={{ duration: 0.45, ease: "easeInOut" }}
-          className="pointer-events-none absolute left-0 right-0 top-1/2 h-[2px] origin-left rounded-full"
-          style={{ background: "#34d399", boxShadow: "0 0 8px #34d399" }}
-        />
+        {/* Green strikethrough animated line cutting across the text */}
+        <svg
+          className="pointer-events-none absolute left-0 right-0 top-1/2 -translate-y-1/2"
+          height="3"
+          width="100%"
+          preserveAspectRatio="none"
+        >
+          <motion.line
+            x1="0"
+            y1="1.5"
+            x2="100%"
+            y2="1.5"
+            stroke="#34d399"
+            strokeWidth="2"
+            strokeLinecap="round"
+            initial={false}
+            animate={{ pathLength: task.completed ? 1 : 0, opacity: task.completed ? 1 : 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            style={{ filter: "drop-shadow(0 0 4px #34d399)" }}
+          />
+        </svg>
       </div>
 
       <button
+        type="button"
         onClick={onDelete}
-        className="opacity-0 group-hover:opacity-60 hover:opacity-100 hover:text-destructive transition px-2"
+        className="opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:text-destructive transition px-2"
         title="Remove task"
       >
         <Trash2 size={14} />
