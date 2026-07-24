@@ -109,17 +109,17 @@ body {
 /* Dark paper notebook */
 .paper-dark {
   background-color: #1c1814;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0px,
-    transparent 39px,
-    rgba(255, 220, 150, 0.08) 39px,
-    rgba(255, 220, 150, 0.08) 40px
-  );
   border: 1px solid rgba(255, 220, 150, 0.1);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   color: #e8d5b0;
   position: relative;
+}
+
+/* Each writable line gets its own rule, directly under its own text —
+   this replaces the old whole-card background-image approach, which
+   drifted out of sync with the text as soon as spacing above it changed. */
+.paper-line {
+  border-bottom: 1px solid rgba(255, 220, 150, 0.15);
 }
 .paper-dark::before {
   content: "";
