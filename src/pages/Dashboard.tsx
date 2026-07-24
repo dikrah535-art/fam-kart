@@ -428,21 +428,22 @@ export default function Dashboard() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, x: 60 }}
                         transition={{ duration: 0.18 }}
-                        className="border-b border-white/10 group align-middle"
+                        className="group align-middle"
+                        style={{ height: "40px" }}
                       >
-                        <td className="px-2 py-2 opacity-60 text-sm font-sans">{r.sr_no}</td>
-                        <td className="px-2 py-2">
+                        <td className="px-2 opacity-60 text-sm font-sans align-middle">{r.sr_no}</td>
+                        <td className="px-2 align-middle">
                           <input
                             value={r.item_name}
                             onChange={(e) => updateRow(idx, { item_name: e.target.value })}
                             placeholder="Item name"
-                            className={`w-full bg-transparent outline-none font-hand text-xl leading-none py-0.5 placeholder:opacity-40 transition ${
+                            className={`w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40 transition ${
                               r.bought ? "line-through opacity-60" : ""
                             }`}
-                            style={{ color: "#e8d5b0" }}
+                            style={{ color: "#e8d5b0", height: "36px", lineHeight: "36px" }}
                           />
                         </td>
-                        <td className="px-2 py-2">
+                        <td className="px-2 align-middle">
                           <input
                             type="number"
                             inputMode="decimal"
@@ -453,16 +454,17 @@ export default function Dashboard() {
                               })
                             }
                             placeholder="—"
-                            className="w-full bg-transparent outline-none font-sans text-sm leading-none py-0.5 placeholder:opacity-30"
+                            className="w-full bg-transparent outline-none font-sans text-sm placeholder:opacity-30"
+                            style={{ height: "36px", lineHeight: "36px" }}
                           />
                         </td>
-                        <td className="px-2 py-2">
+                        <td className="px-2 align-middle">
                           <UnitPicker
                             value={r.unit}
                             onChange={(u) => updateRow(idx, { unit: u }, true)}
                           />
                         </td>
-                        <td className="px-2 py-2">
+                        <td className="px-2 align-middle">
                           <div className="flex items-center gap-1">
                             <span className="opacity-50 text-xs font-sans">₹</span>
                             <input
@@ -475,17 +477,18 @@ export default function Dashboard() {
                                 })
                               }
                               placeholder="0"
-                              className="w-full bg-transparent outline-none font-sans text-sm leading-none py-0.5 placeholder:opacity-30"
+                              className="w-full bg-transparent outline-none font-sans text-sm placeholder:opacity-30"
+                              style={{ height: "36px", lineHeight: "36px" }}
                             />
                           </div>
                         </td>
-                        <td className="px-2 py-2 text-center">
+                        <td className="px-2 text-center align-middle">
                           <BoughtCheck
                             checked={r.bought}
                             onChange={(v) => updateRow(idx, { bought: v }, true)}
                           />
                         </td>
-                        <td className="px-1 py-2 text-center">
+                        <td className="px-1 text-center align-middle">
                           <button
                             type="button"
                             onClick={() => deleteRow(idx)}

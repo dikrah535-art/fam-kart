@@ -22,8 +22,8 @@ const nav = [
   { to: "/categories", label: "Categories", icon: Package },
   { to: "/history", label: "History", icon: Scroll },
   { to: "/budget", label: "Budget", icon: Wallet },
-  { to: "/notebook", label: "Notebook", icon: BookOpen },
   { to: "/todo", label: "To-Do", icon: CheckSquare },
+  { to: "/notebook", label: "Notebook", icon: BookOpen },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
