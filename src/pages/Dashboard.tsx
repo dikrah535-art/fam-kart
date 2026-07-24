@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, PackageMinus, Wallet } from "lucide-react";
+import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, PackageMinus, Wallet } from "lucide-react";
 import PageTransition from "@/components/PageTransition";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -83,6 +83,7 @@ export default function Dashboard() {
     Array.from({ length: MIN_NOTES }, (_, i) => ({ slot_index: i, content: "" })),
   );
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskRows, setTaskRows] = useState(3);
   const [categories, setCategories] = useState<Category[]>([]);
   const [stats, setStats] = useState({ needed: 0, urgent: 0, lowStock: 0, budget: 0, spent: 0 });
 
@@ -289,6 +290,25 @@ export default function Dashboard() {
 
   const addRow = () => setRows((prev) => [...prev, emptyRow(prev.length + 1)]);
 
+  const setRowCount = async (count: number) => {
+    if (count > rows.length) {
+      setRows((prev) => {
+        const next = [...prev];
+        while (next.length < count) next.push(emptyRow(next.length + 1));
+        return next;
+      });
+      return;
+    }
+    if (count < rows.length) {
+      const toRemove = rows.slice(count);
+      const idsToDelete = toRemove.filter((r) => r.id).map((r) => r.id as string);
+      if (idsToDelete.length) {
+        await supabase.from("notebook_entries").delete().in("id", idsToDelete);
+      }
+      setRows((prev) => prev.slice(0, Math.max(count, MIN_ROWS)));
+    }
+  };
+
   const deleteRow = async (idx: number) => {
     const r = rows[idx];
     if (r.id) await supabase.from("notebook_entries").delete().eq("id", r.id);
@@ -331,6 +351,17 @@ export default function Dashboard() {
 
   const addNoteLine = () =>
     setNotes((prev) => [...prev, { slot_index: prev.length, content: "" }]);
+
+  const setNoteCount = (count: number) => {
+    setNotes((prev) => {
+      if (count > prev.length) {
+        const next = [...prev];
+        while (next.length < count) next.push({ slot_index: next.length, content: "" });
+        return next;
+      }
+      return prev.slice(0, Math.max(count, 1));
+    });
+  };
 
   // Tasks
   const addTask = async () => {
@@ -437,7 +468,7 @@ export default function Dashboard() {
                             value={r.item_name}
                             onChange={(e) => updateRow(idx, { item_name: e.target.value })}
                             placeholder="Item name"
-                            className={`w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40 transition ${
+                            className={`paper-line w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40 transition ${
                               r.bought ? "line-through opacity-60" : ""
                             }`}
                             style={{ color: "#e8d5b0", height: "36px", lineHeight: "36px" }}
@@ -505,14 +536,17 @@ export default function Dashboard() {
               </table>
             </div>
 
-            <div className="pt-2 flex justify-center">
-              <button
-                type="button"
-                onClick={addRow}
-                className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1.5 rounded-md border border-white/10 opacity-80 hover:opacity-100 hover:border-primary/50 hover:text-primary transition"
-              >
-                <Plus size={14} /> Add row
-              </button>
+            <div className="pt-2 flex items-center justify-center gap-2 font-sans text-xs opacity-70">
+              <span className="shrink-0">Rows</span>
+              <input
+                type="range"
+                min={MIN_ROWS}
+                max={20}
+                value={rows.length}
+                onChange={(e) => setRowCount(Number(e.target.value))}
+                className="w-40 accent-primary"
+              />
+              <span className="shrink-0 w-6 text-center">{rows.length}</span>
             </div>
           </div>
 
@@ -533,21 +567,24 @@ export default function Dashboard() {
                       value={n.content}
                       onChange={(e) => saveNote(n.slot_index, e.target.value)}
                       placeholder={NOTE_PLACEHOLDERS[i] ?? "Another note…"}
-                      className="w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40"
+                      className="paper-line w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40"
                       style={{ color: "#e8d5b0", height: "40px", lineHeight: "40px", paddingBottom: "2px" }}
                     />
                   </motion.div>
                 ))}
               </AnimatePresence>
             </div>
-            <div className="pt-2 flex justify-center">
-              <button
-                type="button"
-                onClick={addNoteLine}
-                className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1.5 rounded-md border border-white/10 opacity-80 hover:opacity-100 hover:border-primary/50 hover:text-primary transition"
-              >
-                <Plus size={14} /> Add note line
-              </button>
+            <div className="pt-2 flex items-center justify-center gap-2 font-sans text-xs opacity-70">
+              <span className="shrink-0">Notes</span>
+              <input
+                type="range"
+                min={1}
+                max={10}
+                value={notes.length}
+                onChange={(e) => setNoteCount(Number(e.target.value))}
+                className="w-40 accent-primary"
+              />
+              <span className="shrink-0 w-6 text-center">{notes.length}</span>
             </div>
           </div>
 
@@ -559,7 +596,7 @@ export default function Dashboard() {
                 {tasks.filter((t) => !t.completed).length} pending · View all →
               </a>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="paper-line flex items-center gap-2">
               <Circle size={18} className="opacity-50 shrink-0" />
               <input
                 type="text"
@@ -574,14 +611,43 @@ export default function Dashboard() {
                 className="flex-1 bg-transparent outline-none font-hand text-xl placeholder:opacity-40"
                 style={{ color: "#e8d5b0", height: "40px", lineHeight: "40px" }}
               />
-              <button
-                type="button"
-                onClick={addTask}
-                className="inline-flex items-center gap-1 text-xs font-sans px-2.5 py-1 rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 transition"
-                title="Add empty task"
-              >
-                <Plus size={12} />
-              </button>
+            </div>
+
+            <div className="mt-1">
+              {tasks.slice(0, taskRows).map((t) => (
+                <div key={t.id} className="paper-line flex items-center gap-2" style={{ height: "36px" }}>
+                  <span
+                    className={`flex-1 font-hand text-lg truncate ${t.completed ? "line-through opacity-50" : ""}`}
+                    style={{ color: "#e8d5b0" }}
+                  >
+                    {t.title || <span className="italic opacity-40">Untitled</span>}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleTask(t)}
+                    className={`shrink-0 font-sans text-xs px-2.5 py-1 rounded-md border transition ${
+                      t.completed
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "border-white/10 opacity-70 hover:opacity-100 hover:border-primary/50 hover:text-primary"
+                    }`}
+                  >
+                    {t.completed ? "Done" : "Mark done"}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex items-center justify-center gap-2 font-sans text-xs opacity-70">
+              <span className="shrink-0">Visible tasks</span>
+              <input
+                type="range"
+                min={1}
+                max={10}
+                value={taskRows}
+                onChange={(e) => setTaskRows(Number(e.target.value))}
+                className="w-40 accent-primary"
+              />
+              <span className="shrink-0 w-6 text-center">{taskRows}</span>
             </div>
           </div>
         </section>
