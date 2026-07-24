@@ -426,7 +426,7 @@ export default function Dashboard() {
           </div>
 
           {/* Instant Writing List */}
-          <div className="pt-1 relative z-10">
+          <div className="pt-1 pb-4 relative z-10">
             <div className="flex items-baseline justify-between mb-2">
               <h2 className="font-hand text-2xl leading-tight">Instant list</h2>
               <div className="font-sans text-xs opacity-80">
@@ -536,22 +536,13 @@ export default function Dashboard() {
               </table>
             </div>
 
-            <div className="pt-2 flex items-center justify-center gap-2 font-sans text-xs opacity-70">
-              <span className="shrink-0">Rows</span>
-              <input
-                type="range"
-                min={MIN_ROWS}
-                max={20}
-                value={rows.length}
-                onChange={(e) => setRowCount(Number(e.target.value))}
-                className="w-40 accent-primary"
-              />
-              <span className="shrink-0 w-6 text-center">{rows.length}</span>
+            <div className="pb-4">
+              <ResizeHandle count={rows.length} setCount={setRowCount} min={MIN_ROWS} max={12} rowHeight={40} label="rows" />
             </div>
           </div>
 
           {/* Family Notes — stacked lines */}
-          <div className="pt-1 relative z-10">
+          <div className="pt-1 pb-4 relative z-10">
             <h2 className="font-hand text-2xl leading-tight mb-1">Family notes</h2>
             <div>
               <AnimatePresence initial={false}>
@@ -574,22 +565,13 @@ export default function Dashboard() {
                 ))}
               </AnimatePresence>
             </div>
-            <div className="pt-2 flex items-center justify-center gap-2 font-sans text-xs opacity-70">
-              <span className="shrink-0">Notes</span>
-              <input
-                type="range"
-                min={1}
-                max={10}
-                value={notes.length}
-                onChange={(e) => setNoteCount(Number(e.target.value))}
-                className="w-40 accent-primary"
-              />
-              <span className="shrink-0 w-6 text-center">{notes.length}</span>
+            <div className="pb-4">
+              <ResizeHandle count={notes.length} setCount={setNoteCount} min={1} max={10} rowHeight={40} label="notes" />
             </div>
           </div>
 
           {/* Quick tasks — single line entry, links to /todo */}
-          <div className="pt-1 relative z-10">
+          <div className="pt-1 pb-4 relative z-10">
             <div className="flex items-baseline justify-between mb-1">
               <h2 className="font-hand text-2xl leading-tight">Quick task</h2>
               <a href="/todo" className="font-sans text-xs opacity-70 hover:text-primary transition">
@@ -637,18 +619,7 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className="pt-2 flex items-center justify-center gap-2 font-sans text-xs opacity-70">
-              <span className="shrink-0">Visible tasks</span>
-              <input
-                type="range"
-                min={1}
-                max={10}
-                value={taskRows}
-                onChange={(e) => setTaskRows(Number(e.target.value))}
-                className="w-40 accent-primary"
-              />
-              <span className="shrink-0 w-6 text-center">{taskRows}</span>
-            </div>
+            <ResizeHandle count={taskRows} setCount={setTaskRows} min={1} max={10} rowHeight={36} label="visible tasks" />
           </div>
         </section>
 
@@ -723,6 +694,83 @@ export default function Dashboard() {
         </section>
       </div>
     </PageTransition>
+  );
+}
+
+function ResizeHandle({
+  count,
+  setCount,
+  min,
+  max,
+  rowHeight,
+  label,
+}: {
+  count: number;
+  setCount: (n: number) => void;
+  min: number;
+  max: number;
+  rowHeight: number;
+  label: string;
+}) {
+  const drag = useRef<{ startY: number; startCount: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [live, setLive] = useState(count);
+
+  useEffect(() => setLive(count), [count]);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    drag.current = { startY: e.clientY, startCount: count };
+    let lastApplied = count;
+    setDragging(true);
+
+    const onMove = (ev: PointerEvent) => {
+      if (!drag.current) return;
+      const deltaY = ev.clientY - drag.current.startY;
+      // Dragging down (positive deltaY) grows the section; dragging up shrinks it.
+      // Rounding here is what makes it "settle" on a whole row the instant you
+      // stop moving, instead of leaving it hanging on a half-row.
+      const deltaRows = Math.round(deltaY / rowHeight);
+      const next = Math.min(max, Math.max(min, drag.current.startCount + deltaRows));
+      setLive(next);
+      if (next !== lastApplied) {
+        lastApplied = next;
+        setCount(next);
+      }
+    };
+    const onUp = () => {
+      drag.current = null;
+      setDragging(false);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  return (
+    <div
+      onPointerDown={onPointerDown}
+      title={`Drag down to add ${label}, up to remove`}
+      className="absolute bottom-0 right-0 flex flex-col items-end gap-0.5 select-none touch-none z-20 px-1 py-1"
+      style={{ cursor: "nwse-resize" }}
+    >
+      <span
+        className={`font-sans text-[10px] leading-none transition-opacity ${
+          dragging ? "opacity-90 text-primary" : "opacity-0"
+        }`}
+      >
+        {live}
+      </span>
+      <svg width="13" height="13" viewBox="0 0 13 13" className={`transition-opacity ${dragging ? "opacity-100 text-primary" : "opacity-35 hover:opacity-70"}`}>
+        <circle cx="10.5" cy="2.5" r="1.2" fill="currentColor" />
+        <circle cx="10.5" cy="6.5" r="1.2" fill="currentColor" />
+        <circle cx="10.5" cy="10.5" r="1.2" fill="currentColor" />
+        <circle cx="6.5" cy="6.5" r="1.2" fill="currentColor" />
+        <circle cx="6.5" cy="10.5" r="1.2" fill="currentColor" />
+        <circle cx="2.5" cy="10.5" r="1.2" fill="currentColor" />
+      </svg>
+    </div>
   );
 }
 
