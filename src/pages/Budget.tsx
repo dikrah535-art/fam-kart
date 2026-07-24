@@ -207,7 +207,7 @@ export default function Budget() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a"/>
                 <XAxis dataKey="name" tick={{ fill: "#a1a1aa", fontSize: 11 }} tickLine={false} axisLine={false}/>
                 <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} tickLine={false} axisLine={false}/>
-                <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8 }}/>
+                <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8 }} itemStyle={{ color: "#e5e5e5" }} labelStyle={{ color: "#e5e5e5" }}/>
                 <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                   {catData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]}/>)}
                 </Bar>
@@ -222,7 +222,7 @@ export default function Budget() {
                   <Cell fill={health}/>
                   <Cell fill="#2a2a2a"/>
                 </Pie>
-                <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8 }}/>
+                <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8 }} itemStyle={{ color: "#e5e5e5" }} labelStyle={{ color: "#e5e5e5" }}/>
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -233,7 +233,7 @@ export default function Budget() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a"/>
                 <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 11 }} tickLine={false} axisLine={false}/>
                 <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} tickLine={false} axisLine={false}/>
-                <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8 }}/>
+                <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8 }} itemStyle={{ color: "#e5e5e5" }} labelStyle={{ color: "#e5e5e5" }}/>
                 <Line type="monotone" dataKey="spent" stroke="#3ecf8e" strokeWidth={2.5} dot={{ r: 4, fill: "#3ecf8e" }} activeDot={{ r: 6 }}/>
               </LineChart>
             </ResponsiveContainer>
