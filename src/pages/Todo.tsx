@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Plus, Trash2, CheckCircle2, Circle, ArrowLeft, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -33,11 +34,12 @@ export default function Todo() {
     if (!fid) return;
     let cancelled = false;
     const load = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("notebook_tasks")
         .select("*")
         .eq("family_id", fid)
         .order("created_at", { ascending: false });
+      if (error) { toast.error(error.message); return; }
       if (!cancelled) setTasks((data as Task[]) ?? []);
     };
     load();
@@ -62,23 +64,26 @@ export default function Todo() {
       created_by: user.id,
     };
     if (dueDate) payload.due_date = dueDate;
-    await supabase.from("notebook_tasks").insert(payload);
+    const { error } = await supabase.from("notebook_tasks").insert(payload);
+    if (error) { toast.error(error.message); return; }
     setNewTitle(""); setDueDate("");
   };
 
   const toggle = async (t: Task) => {
     const next = !t.completed;
     setTasks((prev) => prev.map((x) => x.id === t.id ? { ...x, completed: next, completed_at: next ? new Date().toISOString() : null } : x));
-    await supabase.from("notebook_tasks").update({
+    const { error } = await supabase.from("notebook_tasks").update({
       completed: next,
       completed_at: next ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     }).eq("id", t.id);
+    if (error) toast.error(error.message);
   };
 
   const del = async (id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
-    await supabase.from("notebook_tasks").delete().eq("id", id);
+    const { error } = await supabase.from("notebook_tasks").delete().eq("id", id);
+    if (error) toast.error(error.message);
   };
 
   const counts = {
