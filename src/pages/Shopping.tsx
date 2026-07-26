@@ -22,11 +22,10 @@ interface Item {
   family_id: string;
 }
 
-const statusOrder: Record<string, number> = { urgent: 0, low_stock: 1, needed: 2 };
+const statusOrder: Record<string, number> = { urgent: 0, needed: 1 };
 
 const statusBadge: Record<string, { label: string; className: string }> = {
   urgent: { label: "Urgent", className: "bg-destructive/15 text-destructive border-destructive/30" },
-  low_stock: { label: "Low Stock", className: "bg-warning/15 text-warning border-warning/30" },
   needed: { label: "Needed", className: "bg-primary/10 text-primary border-primary/30" },
 };
 
@@ -71,7 +70,6 @@ export default function Shopping() {
     const sorted = [...items].sort((a, b) => (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3));
     if (tab === "all") return sorted;
     if (tab === "urgent") return sorted.filter((i) => i.priority === "urgent" || i.status === "urgent");
-    if (tab === "low_stock") return sorted.filter((i) => i.status === "low_stock");
     if (tab === "needed") return sorted.filter((i) => i.status === "needed");
     return sorted;
   }, [items, tab]);
@@ -115,7 +113,6 @@ export default function Shopping() {
     { id: "all", label: "All" },
     { id: "needed", label: "Needed" },
     { id: "urgent", label: "Urgent" },
-    { id: "low_stock", label: "Low Stock" },
   ];
 
   return (
