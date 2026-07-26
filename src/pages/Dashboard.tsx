@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, PackageMinus, Wallet } from "lucide-react";
+import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, PackageMinus, Wallet, Copy } from "lucide-react";
+import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { localDateISO, msUntilNextLocalMidnight, formatLongDate } from "@/lib/dates";
+import { useBudgetSummary } from "@/hooks/useBudgetSummary";
 
 interface Entry {
   id?: string;
@@ -85,9 +87,17 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskRows, setTaskRows] = useState(3);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [stats, setStats] = useState({ needed: 0, urgent: 0, lowStock: 0, budget: 0, spent: 0 });
+  const [stats, setStats] = useState({ needed: 0, urgent: 0, lowStock: 0 });
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
 
   const fid = profile?.family_id ?? null;
+
+  // Focus tracking — prevents realtime echo from replacing an input the user is typing in.
+  const focusedRows = useRef<Set<number>>(new Set());
+  const focusedNotes = useRef<Set<number>>(new Set());
+
+  const now = new Date();
+  const budget = useBudgetSummary(fid, now.getMonth() + 1, now.getFullYear());
 
   useEffect(() => {
     const t = setTimeout(() => setToday(localDateISO()), msUntilNextLocalMidnight());
@@ -109,10 +119,20 @@ export default function Dashboard() {
       if (cancelled) return;
       const byNo = new Map<number, Entry>();
       (data as Entry[] | null)?.forEach((r) => byNo.set(r.sr_no, r));
-      const maxNo = Math.max(MIN_ROWS, ...Array.from(byNo.keys(), (n) => n));
-      const merged: Entry[] = [];
-      for (let i = 1; i <= maxNo; i++) merged.push(byNo.get(i) ?? emptyRow(i));
-      setRows(merged);
+      setRows((prev) => {
+        const maxNo = Math.max(MIN_ROWS, prev.length, ...Array.from(byNo.keys()));
+        const merged: Entry[] = [];
+        for (let i = 1; i <= maxNo; i++) {
+          // Preserve local state for rows the user is currently editing —
+          // the realtime echo of their own save must not clobber the cursor.
+          if (focusedRows.current.has(i)) {
+            const local = prev.find((r) => r.sr_no === i);
+            if (local) { merged.push(local); continue; }
+          }
+          merged.push(byNo.get(i) ?? prev.find((r) => r.sr_no === i) ?? emptyRow(i));
+        }
+        return merged;
+      });
     };
 
     const loadNotes = async () => {
@@ -124,11 +144,18 @@ export default function Dashboard() {
       if (cancelled) return;
       const bySlot = new Map<number, Note>();
       (data as Note[] | null)?.forEach((n) => bySlot.set(n.slot_index, n));
-      const maxSlot = Math.max(MIN_NOTES - 1, ...Array.from(bySlot.keys()));
-      const merged: Note[] = [];
-      for (let i = 0; i <= maxSlot; i++)
-        merged.push(bySlot.get(i) ?? { slot_index: i, content: "" });
-      setNotes(merged);
+      setNotes((prev) => {
+        const maxSlot = Math.max(MIN_NOTES - 1, prev.length - 1, ...Array.from(bySlot.keys()));
+        const merged: Note[] = [];
+        for (let i = 0; i <= maxSlot; i++) {
+          if (focusedNotes.current.has(i)) {
+            const local = prev.find((n) => n.slot_index === i);
+            if (local) { merged.push(local); continue; }
+          }
+          merged.push(bySlot.get(i) ?? prev.find((n) => n.slot_index === i) ?? { slot_index: i, content: "" });
+        }
+        return merged;
+      });
     };
 
     loadEntries();
@@ -201,16 +228,8 @@ export default function Dashboard() {
     let cancelled = false;
 
     const load = async () => {
-      const now = new Date();
-      const [{ data: items }, { data: budget }, { data: cats }] = await Promise.all([
+      const [{ data: items }, { data: cats }] = await Promise.all([
         supabase.from("items").select("status,priority").eq("family_id", fid),
-        supabase
-          .from("budgets")
-          .select("amount,spent")
-          .eq("family_id", fid)
-          .eq("month", now.getMonth() + 1)
-          .eq("year", now.getFullYear())
-          .maybeSingle(),
         supabase.from("categories").select("id,name,icon,color").eq("family_id", fid).order("name"),
       ]);
       if (cancelled) return;
@@ -219,8 +238,6 @@ export default function Dashboard() {
         needed: list.filter((i) => i.status === "needed").length,
         urgent: list.filter((i) => i.priority === "urgent" || i.status === "urgent").length,
         lowStock: list.filter((i) => i.status === "low_stock").length,
-        budget: Number((budget as { amount?: number } | null)?.amount ?? 0),
-        spent: Number((budget as { spent?: number } | null)?.spent ?? 0),
       });
       setCategories((cats as Category[] | null) ?? []);
     };
@@ -235,11 +252,6 @@ export default function Dashboard() {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "budgets", filter: `family_id=eq.${fid}` },
-        load,
-      )
-      .on(
-        "postgres_changes",
         { event: "*", schema: "public", table: "categories", filter: `family_id=eq.${fid}` },
         load,
       )
@@ -248,6 +260,17 @@ export default function Dashboard() {
       cancelled = true;
       supabase.removeChannel(ch);
     };
+  }, [fid]);
+
+  // Invite code for the header copy chip
+  useEffect(() => {
+    if (!fid) return;
+    supabase
+      .from("families")
+      .select("invite_code")
+      .eq("id", fid)
+      .maybeSingle()
+      .then(({ data }) => setInviteCode((data as { invite_code?: string } | null)?.invite_code ?? null));
   }, [fid]);
 
   // Debounced saves
@@ -282,8 +305,25 @@ export default function Dashboard() {
   const updateRow = (idx: number, patch: Partial<Entry>, immediate = false) => {
     setRows((prev) => {
       const next = [...prev];
-      next[idx] = { ...next[idx], ...patch };
-      scheduleSaveRow(next[idx], immediate ? 0 : 400);
+      const before = next[idx];
+      const after = { ...before, ...patch };
+      next[idx] = after;
+      scheduleSaveRow(after, immediate ? 0 : 400);
+      // Toast when the bought flag flips — the DB trigger syncs purchase_history,
+      // so this is our confirmation to the user that budget just updated.
+      if (patch.bought !== undefined && patch.bought !== before.bought) {
+        const price = Number(after.price) || 0;
+        const label = after.item_name.trim() || `Row ${after.sr_no}`;
+        if (patch.bought) {
+          toast.success(price > 0
+            ? `Added ₹${price.toLocaleString("en-IN")} to this month's spend`
+            : `Marked "${label}" bought`);
+        } else {
+          toast(price > 0
+            ? `Removed ₹${price.toLocaleString("en-IN")} from this month's spend`
+            : `Unmarked "${label}"`);
+        }
+      }
       return next;
     });
   };
@@ -407,7 +447,7 @@ export default function Dashboard() {
     await supabase.from("notebook_tasks").delete().eq("id", id);
   };
 
-  const budgetPct = stats.budget > 0 ? Math.min(100, Math.round((stats.spent / stats.budget) * 100)) : 0;
+  const budgetPct = Math.round(budget.pct);
 
   return (
     <PageTransition>
@@ -415,14 +455,17 @@ export default function Dashboard() {
         {/* Unified Family Notebook */}
         <section className="paper-dark rounded-2xl pl-16 pr-6 md:pr-10 py-5 space-y-4">
           {/* Greeting */}
-          <div>
-            <h1 className="font-hand text-3xl md:text-4xl leading-tight min-h-[1.2em]">
-              {typed}
-              {typed.length < greet.length && <span className="animate-pulse">|</span>}
-            </h1>
-            <p className="font-hand text-lg md:text-xl mt-0.5 opacity-80 leading-tight min-h-[1.2em]">
-              {typedDate}
-            </p>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="font-hand text-3xl md:text-4xl leading-tight min-h-[1.2em]">
+                {typed}
+                {typed.length < greet.length && <span className="animate-pulse">|</span>}
+              </h1>
+              <p className="font-hand text-lg md:text-xl mt-0.5 opacity-80 leading-tight min-h-[1.2em]">
+                {typedDate}
+              </p>
+            </div>
+            {inviteCode && <InviteChip code={inviteCode} />}
           </div>
 
           {/* Instant Writing List */}
@@ -467,6 +510,8 @@ export default function Dashboard() {
                           <input
                             value={r.item_name}
                             onChange={(e) => updateRow(idx, { item_name: e.target.value })}
+                            onFocus={() => focusedRows.current.add(r.sr_no)}
+                            onBlur={() => focusedRows.current.delete(r.sr_no)}
                             placeholder="Item name"
                             className={`paper-line w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40 transition ${
                               r.bought ? "line-through opacity-60" : ""
@@ -557,6 +602,8 @@ export default function Dashboard() {
                     <input
                       value={n.content}
                       onChange={(e) => saveNote(n.slot_index, e.target.value)}
+                      onFocus={() => focusedNotes.current.add(n.slot_index)}
+                      onBlur={() => focusedNotes.current.delete(n.slot_index)}
                       placeholder={NOTE_PLACEHOLDERS[i] ?? "Another note…"}
                       className="paper-line w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40"
                       style={{ color: "#e8d5b0", height: "40px", lineHeight: "40px", paddingBottom: "2px" }}
@@ -653,8 +700,8 @@ export default function Dashboard() {
             accent="#34d399"
             meter={budgetPct}
             subtitle={
-              stats.budget > 0
-                ? `₹${stats.spent.toLocaleString("en-IN")} / ₹${stats.budget.toLocaleString("en-IN")}`
+              budget.amount > 0
+                ? `₹${Math.round(budget.spent).toLocaleString("en-IN")} / ₹${budget.amount.toLocaleString("en-IN")}`
                 : "No budget set"
             }
           />
@@ -976,6 +1023,29 @@ function BoughtCheck({ checked, onChange }: { checked: boolean; onChange: (v: bo
           </motion.svg>
         )}
       </AnimatePresence>
+    </button>
+  );
+}
+
+function InviteChip({ code }: { code: string }) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success("Copied!", { description: `Invite code ${code}` });
+    } catch {
+      toast.error("Couldn't copy");
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="group inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 hover:border-primary/50 transition px-3 py-1.5"
+      title="Copy family invite code"
+    >
+      <span className="font-sans text-[10px] uppercase tracking-wider opacity-70">Invite</span>
+      <span className="font-mono tracking-widest text-primary text-sm">{code}</span>
+      <Copy size={13} className="opacity-60 group-hover:opacity-100" />
     </button>
   );
 }

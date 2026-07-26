@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBudgetSummary } from "@/hooks/useBudgetSummary";
 import { toast } from "sonner";
 import {
   Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart,
@@ -29,47 +30,51 @@ export default function Budget() {
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
 
-  const [amount, setAmount] = useState<number>(0);
   const [amountDraft, setAmountDraft] = useState<string>("");
-  const [history, setHistory] = useState<HistoryRow[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
 
+  // Single source of truth for amount + spend + history (realtime).
+  const { amount, spent: monthSpent, remaining, pct, history } = useBudgetSummary(fid, month, year);
+
+  useEffect(() => {
+    setAmountDraft(amount ? String(amount) : "");
+  }, [amount]);
+
+  useEffect(() => {
+    if (!fid) return;
+    let cancelled = false;
+    supabase
+      .from("categories")
+      .select("id,name,color")
+      .eq("family_id", fid)
+      .then(({ data }) => {
+        if (!cancelled) setCats((data as Category[]) ?? []);
+      });
+    return () => { cancelled = true; };
+  }, [fid]);
+
+  // History for the 6-month trend (broader window than the hook's monthly slice).
+  const [trendHistory, setTrendHistory] = useState<HistoryRow[]>([]);
   useEffect(() => {
     if (!fid) return;
     let cancelled = false;
     const load = async () => {
       const sixMonthsAgo = new Date(year, month - 6, 1).toISOString();
-      const [{ data: b }, { data: h }, { data: c }] = await Promise.all([
-        supabase.from("budgets").select("amount").eq("family_id", fid).eq("month", month).eq("year", year).maybeSingle(),
-        supabase.from("purchase_history").select("cost,purchased_at,category_id").eq("family_id", fid).gte("purchased_at", sixMonthsAgo),
-        supabase.from("categories").select("id,name,color").eq("family_id", fid),
-      ]);
-      if (cancelled) return;
-      const amt = Number((b as { amount?: number } | null)?.amount ?? 0);
-      setAmount(amt);
-      setAmountDraft(String(amt || ""));
-      setHistory((h as HistoryRow[]) ?? []);
-      setCats((c as Category[]) ?? []);
+      const { data } = await supabase
+        .from("purchase_history")
+        .select("cost,purchased_at,category_id")
+        .eq("family_id", fid)
+        .gte("purchased_at", sixMonthsAgo);
+      if (!cancelled) setTrendHistory((data as HistoryRow[]) ?? []);
     };
     load();
     const ch = supabase
-      .channel(`budget-${fid}`)
+      .channel(`budget-trend-${fid}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "purchase_history", filter: `family_id=eq.${fid}` }, load)
-      .on("postgres_changes", { event: "*", schema: "public", table: "budgets", filter: `family_id=eq.${fid}` }, load)
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };
   }, [fid, month, year]);
 
-  const monthSpent = useMemo(
-    () => history.filter((r) => {
-      const d = new Date(r.purchased_at);
-      return d.getMonth() + 1 === month && d.getFullYear() === year;
-    }).reduce((s, r) => s + Number(r.cost || 0), 0),
-    [history, month, year],
-  );
-
-  const pct = amount > 0 ? Math.min(100, (monthSpent / amount) * 100) : 0;
-  const remaining = Math.max(0, amount - monthSpent);
   const health = pct < 70 ? "#3ecf8e" : pct < 90 ? "#fbbf24" : "#ef4444";
   const healthLabel = pct < 70 ? "Healthy" : pct < 90 ? "Watchful" : "Over budget";
 
@@ -102,24 +107,24 @@ export default function Budget() {
       buckets.push({ label: d.toLocaleDateString(undefined, { month: "short" }), spent: 0, key });
     }
     const idx = new Map(buckets.map((b, i) => [b.key, i]));
-    history.forEach((r) => {
+    trendHistory.forEach((r) => {
       const d = new Date(r.purchased_at);
       const k = `${d.getFullYear()}-${d.getMonth()}`;
       const i = idx.get(k);
       if (i != null) buckets[i].spent += Number(r.cost || 0);
     });
     return buckets.map((b) => ({ label: b.label, spent: Math.round(b.spent) }));
-  }, [history, month, year]);
+  }, [trendHistory, month, year]);
 
   const saveBudget = async () => {
     if (!fid) return;
     const value = Number(amountDraft) || 0;
+    // Only write `amount`. `spent` is derived from purchase_history and must not be persisted here.
     const { error } = await supabase.from("budgets").upsert(
-      { family_id: fid, month, year, amount: value, spent: monthSpent, updated_at: new Date().toISOString() },
+      { family_id: fid, month, year, amount: value, updated_at: new Date().toISOString() },
       { onConflict: "family_id,month,year" },
     );
     if (error) return toast.error(error.message);
-    setAmount(value);
     toast.success("Budget saved");
   };
 
