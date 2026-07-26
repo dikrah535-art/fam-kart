@@ -413,7 +413,7 @@ export default function Dashboard() {
     await supabase.from("notebook_tasks").delete().eq("id", id);
   };
 
-  const budgetPct = stats.budget > 0 ? Math.min(100, Math.round((stats.spent / stats.budget) * 100)) : 0;
+  const budgetPct = Math.round(budget.pct);
 
   return (
     <PageTransition>
