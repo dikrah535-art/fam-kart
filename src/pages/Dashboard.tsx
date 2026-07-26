@@ -599,6 +599,8 @@ export default function Dashboard() {
                     <input
                       value={n.content}
                       onChange={(e) => saveNote(n.slot_index, e.target.value)}
+                      onFocus={() => focusedNotes.current.add(n.slot_index)}
+                      onBlur={() => focusedNotes.current.delete(n.slot_index)}
                       placeholder={NOTE_PLACEHOLDERS[i] ?? "Another note…"}
                       className="paper-line w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40"
                       style={{ color: "#e8d5b0", height: "40px", lineHeight: "40px", paddingBottom: "2px" }}
