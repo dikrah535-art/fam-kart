@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, PackageMinus, Wallet } from "lucide-react";
+import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, PackageMinus, Wallet, Copy } from "lucide-react";
+import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { localDateISO, msUntilNextLocalMidnight, formatLongDate } from "@/lib/dates";
+import { useBudgetSummary } from "@/hooks/useBudgetSummary";
 
 interface Entry {
   id?: string;
