@@ -211,16 +211,8 @@ export default function Dashboard() {
     let cancelled = false;
 
     const load = async () => {
-      const now = new Date();
-      const [{ data: items }, { data: budget }, { data: cats }] = await Promise.all([
+      const [{ data: items }, { data: cats }] = await Promise.all([
         supabase.from("items").select("status,priority").eq("family_id", fid),
-        supabase
-          .from("budgets")
-          .select("amount,spent")
-          .eq("family_id", fid)
-          .eq("month", now.getMonth() + 1)
-          .eq("year", now.getFullYear())
-          .maybeSingle(),
         supabase.from("categories").select("id,name,icon,color").eq("family_id", fid).order("name"),
       ]);
       if (cancelled) return;
@@ -229,8 +221,6 @@ export default function Dashboard() {
         needed: list.filter((i) => i.status === "needed").length,
         urgent: list.filter((i) => i.priority === "urgent" || i.status === "urgent").length,
         lowStock: list.filter((i) => i.status === "low_stock").length,
-        budget: Number((budget as { amount?: number } | null)?.amount ?? 0),
-        spent: Number((budget as { spent?: number } | null)?.spent ?? 0),
       });
       setCategories((cats as Category[] | null) ?? []);
     };
@@ -245,11 +235,6 @@ export default function Dashboard() {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "budgets", filter: `family_id=eq.${fid}` },
-        load,
-      )
-      .on(
-        "postgres_changes",
         { event: "*", schema: "public", table: "categories", filter: `family_id=eq.${fid}` },
         load,
       )
@@ -258,6 +243,17 @@ export default function Dashboard() {
       cancelled = true;
       supabase.removeChannel(ch);
     };
+  }, [fid]);
+
+  // Invite code for the header copy chip
+  useEffect(() => {
+    if (!fid) return;
+    supabase
+      .from("families")
+      .select("invite_code")
+      .eq("id", fid)
+      .maybeSingle()
+      .then(({ data }) => setInviteCode((data as { invite_code?: string } | null)?.invite_code ?? null));
   }, [fid]);
 
   // Debounced saves
