@@ -23,6 +23,7 @@ export default function QuickAddFab() {
   const [price, setPrice] = useState("");
   const [priority, setPriority] = useState("normal");
   const [categoryId, setCategoryId] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState(localDateISO());
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
 
   // Task
@@ -45,24 +46,54 @@ export default function QuickAddFab() {
 
   const reset = () => {
     setItemName(""); setQty(""); setUnit(""); setPrice(""); setPriority("normal"); setCategoryId("");
+    setPurchaseDate(localDateISO());
     setTaskTitle(""); setDueDate(""); setNoteText("");
   };
 
   const submitItem = async () => {
     if (!fid || !user || !itemName.trim()) return;
-    const { error } = await supabase.from("items").insert({
-      family_id: fid,
-      category_id: categoryId || null,
-      name: itemName.trim(),
-      quantity: qty ? Number(qty) : null,
-      unit: unit || null,
-      estimated_cost: price ? Number(price) : null,
-      priority,
-      status: priority === "urgent" ? "urgent" : "needed",
-      created_by: user.id,
-    });
-    if (error) return toast.error(error.message);
-    toast.success(`Added ${itemName}`);
+    const cost = price ? Number(price) : null;
+    const alreadyBought = cost !== null && cost > 0;
+
+    const { data, error } = await supabase
+      .from("items")
+      .insert({
+        family_id: fid,
+        category_id: categoryId || null,
+        name: itemName.trim(),
+        quantity: qty ? Number(qty) : null,
+        unit: unit || null,
+        estimated_cost: cost,
+        priority,
+        status: alreadyBought ? "stocked" : priority === "urgent" ? "urgent" : "needed",
+        created_by: user.id,
+      })
+      .select()
+      .single();
+    if (error || !data) return toast.error(error?.message ?? "Failed to add item");
+
+    if (alreadyBought) {
+      // Log it against the chosen date so it lands in the right spot in Budget history,
+      // instead of always defaulting to "now".
+      const purchasedAt = new Date(`${purchaseDate}T12:00:00`).toISOString();
+      const { error: hErr } = await supabase.from("purchase_history").insert({
+        family_id: fid,
+        item_id: data.id,
+        category_id: categoryId || null,
+        quantity: qty ? Number(qty) : null,
+        unit: unit || null,
+        cost,
+        source_type: "quick_add",
+        source_id: data.id,
+        item_name: itemName.trim(),
+        purchased_by: user.id,
+        purchased_at: purchasedAt,
+      });
+      if (hErr) return toast.error(hErr.message);
+      toast.success(`Logged ${itemName} · ₹${cost.toLocaleString("en-IN")} on ${purchaseDate}`);
+    } else {
+      toast.success(`Added ${itemName}`);
+    }
     reset(); setOpen(false);
   };
 
@@ -193,6 +224,17 @@ export default function QuickAddFab() {
                   <option value="normal">Normal</option>
                   <option value="urgent">Urgent</option>
                 </select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">
+                  {price ? "Purchase date (logs to history)" : "Date (only used if a price is entered)"}
+                </label>
+                <input
+                  type="date"
+                  value={purchaseDate}
+                  onChange={(e) => setPurchaseDate(e.target.value)}
+                  className="mt-1 w-full bg-muted rounded-md px-3 py-2 text-sm outline-none border border-transparent focus:border-primary"
+                />
               </div>
               <button
                 type="button"
