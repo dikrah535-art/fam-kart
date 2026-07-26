@@ -91,7 +91,6 @@ export default function Categories() {
         name: name.trim(),
         icon,
         color,
-        created_by: user.id,
       });
       if (error) return toast.error(error.message);
       toast.success("Category created");
