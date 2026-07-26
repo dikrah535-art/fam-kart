@@ -507,6 +507,8 @@ export default function Dashboard() {
                           <input
                             value={r.item_name}
                             onChange={(e) => updateRow(idx, { item_name: e.target.value })}
+                            onFocus={() => focusedRows.current.add(r.sr_no)}
+                            onBlur={() => focusedRows.current.delete(r.sr_no)}
                             placeholder="Item name"
                             className={`paper-line w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40 transition ${
                               r.bought ? "line-through opacity-60" : ""
