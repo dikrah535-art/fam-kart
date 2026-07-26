@@ -455,14 +455,17 @@ export default function Dashboard() {
         {/* Unified Family Notebook */}
         <section className="paper-dark rounded-2xl pl-16 pr-6 md:pr-10 py-5 space-y-4">
           {/* Greeting */}
-          <div>
-            <h1 className="font-hand text-3xl md:text-4xl leading-tight min-h-[1.2em]">
-              {typed}
-              {typed.length < greet.length && <span className="animate-pulse">|</span>}
-            </h1>
-            <p className="font-hand text-lg md:text-xl mt-0.5 opacity-80 leading-tight min-h-[1.2em]">
-              {typedDate}
-            </p>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="font-hand text-3xl md:text-4xl leading-tight min-h-[1.2em]">
+                {typed}
+                {typed.length < greet.length && <span className="animate-pulse">|</span>}
+              </h1>
+              <p className="font-hand text-lg md:text-xl mt-0.5 opacity-80 leading-tight min-h-[1.2em]">
+                {typedDate}
+              </p>
+            </div>
+            {inviteCode && <InviteChip code={inviteCode} />}
           </div>
 
           {/* Instant Writing List */}
