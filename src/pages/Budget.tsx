@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBudgetSummary } from "@/hooks/useBudgetSummary";
 import { toast } from "sonner";
 import {
   Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart,
