@@ -101,6 +101,14 @@ export default function Dashboard() {
     return () => clearTimeout(t);
   }, [today]);
 
+  // Guards against the realtime-echo bug: your own save broadcasts back to you,
+  // and a naive full refetch would wipe out whatever you've typed since.
+  // We skip re-applying fresh server data to whatever the user is actively
+  // touching right now.
+  const focusedRow = useRef<number | null>(null);
+  const focusedNote = useRef<number | null>(null);
+  const pendingTaskToggle = useRef<Set<string>>(new Set());
+
   // Load notebook (entries + notes) for today with realtime
   useEffect(() => {
     if (!fid) return;
@@ -117,9 +125,21 @@ export default function Dashboard() {
       const byNo = new Map<number, Entry>();
       (data as Entry[] | null)?.forEach((r) => byNo.set(r.sr_no, r));
       const maxNo = Math.max(MIN_ROWS, ...Array.from(byNo.keys(), (n) => n));
-      const merged: Entry[] = [];
-      for (let i = 1; i <= maxNo; i++) merged.push(byNo.get(i) ?? emptyRow(i));
-      setRows(merged);
+      setRows((prev) => {
+        const prevByNo = new Map(prev.map((r) => [r.sr_no, r]));
+        const merged: Entry[] = [];
+        for (let i = 1; i <= maxNo; i++) {
+          // Keep the local, in-progress value for whatever row the user is
+          // currently typing in — the fresh server copy may be one keystroke
+          // behind and would otherwise erase what they just typed.
+          if (focusedRow.current === i && prevByNo.has(i)) {
+            merged.push(prevByNo.get(i)!);
+          } else {
+            merged.push(byNo.get(i) ?? emptyRow(i));
+          }
+        }
+        return merged;
+      });
     };
 
     const loadNotes = async () => {
@@ -132,10 +152,18 @@ export default function Dashboard() {
       const bySlot = new Map<number, Note>();
       (data as Note[] | null)?.forEach((n) => bySlot.set(n.slot_index, n));
       const maxSlot = Math.max(MIN_NOTES - 1, ...Array.from(bySlot.keys()));
-      const merged: Note[] = [];
-      for (let i = 0; i <= maxSlot; i++)
-        merged.push(bySlot.get(i) ?? { slot_index: i, content: "" });
-      setNotes(merged);
+      setNotes((prev) => {
+        const prevBySlot = new Map(prev.map((n) => [n.slot_index, n]));
+        const merged: Note[] = [];
+        for (let i = 0; i <= maxSlot; i++) {
+          if (focusedNote.current === i && prevBySlot.has(i)) {
+            merged.push(prevBySlot.get(i)!);
+          } else {
+            merged.push(bySlot.get(i) ?? { slot_index: i, content: "" });
+          }
+        }
+        return merged;
+      });
     };
 
     loadEntries();
@@ -184,7 +212,14 @@ export default function Dashboard() {
         if (!t.completed_at) return true;
         return t.completed_at.slice(0, 10) === today; // keep today's completed for the strike animation
       });
-      setTasks(filtered);
+      setTasks((prev) => {
+        if (pendingTaskToggle.current.size === 0) return filtered;
+        // A toggle we just fired hasn't been confirmed by the server yet —
+        // keep our optimistic local version of that one task so the click
+        // doesn't appear to silently undo itself mid-flight.
+        const prevById = new Map(prev.map((t) => [t.id, t]));
+        return filtered.map((t) => (pendingTaskToggle.current.has(t.id) && prevById.has(t.id) ? prevById.get(t.id)! : t));
+      });
     };
     load();
 
@@ -422,7 +457,8 @@ export default function Dashboard() {
           : x,
       ),
     );
-    await supabase
+    pendingTaskToggle.current.add(t.id);
+    const { error } = await supabase
       .from("notebook_tasks")
       .update({
         completed: next,
@@ -430,6 +466,14 @@ export default function Dashboard() {
         updated_at: new Date().toISOString(),
       })
       .eq("id", t.id);
+    pendingTaskToggle.current.delete(t.id);
+    if (error) {
+      toast.error(error.message);
+      // Revert the optimistic flip since the server never confirmed it.
+      setTasks((prev) =>
+        prev.map((x) => (x.id === t.id ? { ...x, completed: t.completed, completed_at: t.completed_at } : x)),
+      );
+    }
   };
 
   const deleteTask = async (id: string) => {
@@ -512,6 +556,8 @@ export default function Dashboard() {
                           <input
                             value={r.item_name}
                             onChange={(e) => updateRow(idx, { item_name: e.target.value })}
+                            onFocus={() => { focusedRow.current = r.sr_no; }}
+                            onBlur={() => { if (focusedRow.current === r.sr_no) focusedRow.current = null; }}
                             placeholder="Item name"
                             className={`paper-line w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40 transition ${
                               r.bought ? "line-through opacity-60" : ""
@@ -529,6 +575,8 @@ export default function Dashboard() {
                                 quantity: e.target.value === "" ? null : Number(e.target.value),
                               })
                             }
+                            onFocus={() => { focusedRow.current = r.sr_no; }}
+                            onBlur={() => { if (focusedRow.current === r.sr_no) focusedRow.current = null; }}
                             placeholder="—"
                             className="w-full bg-transparent outline-none font-sans text-sm placeholder:opacity-30"
                             style={{ height: "36px", lineHeight: "36px" }}
@@ -552,6 +600,8 @@ export default function Dashboard() {
                                   price: e.target.value === "" ? null : Number(e.target.value),
                                 })
                               }
+                              onFocus={() => { focusedRow.current = r.sr_no; }}
+                              onBlur={() => { if (focusedRow.current === r.sr_no) focusedRow.current = null; }}
                               placeholder="0"
                               className="w-full bg-transparent outline-none font-sans text-sm placeholder:opacity-30"
                               style={{ height: "36px", lineHeight: "36px" }}
@@ -602,6 +652,8 @@ export default function Dashboard() {
                     <input
                       value={n.content}
                       onChange={(e) => saveNote(n.slot_index, e.target.value)}
+                      onFocus={() => { focusedNote.current = n.slot_index; }}
+                      onBlur={() => { if (focusedNote.current === n.slot_index) focusedNote.current = null; }}
                       placeholder={NOTE_PLACEHOLDERS[i] ?? "Another note…"}
                       className="paper-line w-full bg-transparent outline-none font-hand text-xl placeholder:opacity-40"
                       style={{ color: "#e8d5b0", height: "40px", lineHeight: "40px", paddingBottom: "2px" }}
@@ -643,12 +695,26 @@ export default function Dashboard() {
             <div className="mt-1">
               {tasks.slice(0, taskRows).map((t) => (
                 <div key={t.id} className="paper-line flex items-center gap-2" style={{ height: "36px" }}>
-                  <span
-                    className={`flex-1 font-hand text-lg truncate ${t.completed ? "line-through opacity-50" : ""}`}
-                    style={{ color: "#e8d5b0" }}
-                  >
-                    {t.title || <span className="italic opacity-40">Untitled</span>}
-                  </span>
+                  <div className="relative flex-1 min-w-0">
+                    <span
+                      className={`block font-hand text-lg truncate transition-opacity duration-[3000ms] ${t.completed ? "opacity-50" : ""}`}
+                      style={{ color: "#e8d5b0" }}
+                    >
+                      {t.title || <span className="italic opacity-40">Untitled</span>}
+                    </span>
+                    <motion.div
+                      className="absolute left-0 top-1/2 w-full h-[2px] rounded-full"
+                      style={{
+                        transformOrigin: "left",
+                        background: "#34d399",
+                        boxShadow: "0 0 6px #34d399",
+                        translateY: "-50%",
+                      }}
+                      initial={false}
+                      animate={{ scaleX: t.completed ? 1 : 0, opacity: t.completed ? 1 : 0 }}
+                      transition={{ duration: 3, ease: "easeInOut" }}
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={() => toggleTask(t)}
