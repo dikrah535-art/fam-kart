@@ -107,24 +107,24 @@ export default function Budget() {
       buckets.push({ label: d.toLocaleDateString(undefined, { month: "short" }), spent: 0, key });
     }
     const idx = new Map(buckets.map((b, i) => [b.key, i]));
-    history.forEach((r) => {
+    trendHistory.forEach((r) => {
       const d = new Date(r.purchased_at);
       const k = `${d.getFullYear()}-${d.getMonth()}`;
       const i = idx.get(k);
       if (i != null) buckets[i].spent += Number(r.cost || 0);
     });
     return buckets.map((b) => ({ label: b.label, spent: Math.round(b.spent) }));
-  }, [history, month, year]);
+  }, [trendHistory, month, year]);
 
   const saveBudget = async () => {
     if (!fid) return;
     const value = Number(amountDraft) || 0;
+    // Only write `amount`. `spent` is derived from purchase_history and must not be persisted here.
     const { error } = await supabase.from("budgets").upsert(
-      { family_id: fid, month, year, amount: value, spent: monthSpent, updated_at: new Date().toISOString() },
+      { family_id: fid, month, year, amount: value, updated_at: new Date().toISOString() },
       { onConflict: "family_id,month,year" },
     );
     if (error) return toast.error(error.message);
-    setAmount(value);
     toast.success("Budget saved");
   };
 
