@@ -65,14 +65,13 @@ export default function Categories() {
   }, [fid]);
 
   const counts = useMemo(() => {
-    const map = new Map<string, { total: number; urgent: number; low: number; needed: number }>();
+    const map = new Map<string, { total: number; urgent: number; needed: number }>();
     for (const i of items) {
       if (!i.category_id) continue;
-      const c = map.get(i.category_id) ?? { total: 0, urgent: 0, low: 0, needed: 0 };
+      const c = map.get(i.category_id) ?? { total: 0, urgent: 0, needed: 0 };
       if (i.status !== "stocked") {
         c.total++;
         if (i.priority === "urgent" || i.status === "urgent") c.urgent++;
-        else if (i.status === "low_stock") c.low++;
         else if (i.status === "needed") c.needed++;
       }
       map.set(i.category_id, c);
@@ -212,7 +211,7 @@ export default function Categories() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {cats.map((c) => {
-              const k = counts.get(c.id) ?? { total: 0, urgent: 0, low: 0, needed: 0 };
+              const k = counts.get(c.id) ?? { total: 0, urgent: 0, needed: 0 };
               return (
                 <motion.div
                   key={c.id}
@@ -252,11 +251,6 @@ export default function Categories() {
                       {k.urgent > 0 && (
                         <span className="text-[10px] uppercase tracking-wider border rounded-full px-2 py-0.5 bg-destructive/15 text-destructive border-destructive/30">
                           {k.urgent} urgent
-                        </span>
-                      )}
-                      {k.low > 0 && (
-                        <span className="text-[10px] uppercase tracking-wider border rounded-full px-2 py-0.5 bg-warning/15 text-warning border-warning/30">
-                          {k.low} low
                         </span>
                       )}
                       {k.needed > 0 && (
