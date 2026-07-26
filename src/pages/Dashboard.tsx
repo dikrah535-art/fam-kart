@@ -659,8 +659,8 @@ export default function Dashboard() {
             accent="#34d399"
             meter={budgetPct}
             subtitle={
-              stats.budget > 0
-                ? `₹${stats.spent.toLocaleString("en-IN")} / ₹${stats.budget.toLocaleString("en-IN")}`
+              budget.amount > 0
+                ? `₹${Math.round(budget.spent).toLocaleString("en-IN")} / ₹${budget.amount.toLocaleString("en-IN")}`
                 : "No budget set"
             }
           />
