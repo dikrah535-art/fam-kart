@@ -209,24 +209,43 @@ export default function Dashboard() {
 
     const load = async () => {
       const now = new Date();
-      const [{ data: items }, { data: budget }, { data: cats }] = await Promise.all([
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+      // Fetch a safely wide window and filter client-side by local month/year —
+      // this exactly mirrors how Budget.tsx computes monthSpent, so the two
+      // pages can never disagree on what counts as "this month".
+      const windowStart = new Date(year, month - 2, 1).toISOString();
+
+      const [{ data: items }, { data: budget }, { data: history }, { data: cats }] = await Promise.all([
         supabase.from("items").select("status,priority").eq("family_id", fid),
         supabase
           .from("budgets")
-          .select("amount,spent")
+          .select("amount")
           .eq("family_id", fid)
-          .eq("month", now.getMonth() + 1)
-          .eq("year", now.getFullYear())
+          .eq("month", month)
+          .eq("year", year)
           .maybeSingle(),
+        supabase
+          .from("purchase_history")
+          .select("cost,purchased_at")
+          .eq("family_id", fid)
+          .gte("purchased_at", windowStart),
         supabase.from("categories").select("id,name,icon,color").eq("family_id", fid).order("name"),
       ]);
       if (cancelled) return;
       const list = (items as { status: string; priority: string | null }[] | null) ?? [];
+      const historyRows = (history as { cost: number; purchased_at: string }[] | null) ?? [];
+      const monthSpent = historyRows
+        .filter((r) => {
+          const d = new Date(r.purchased_at);
+          return d.getMonth() + 1 === month && d.getFullYear() === year;
+        })
+        .reduce((s, r) => s + Number(r.cost || 0), 0);
       setStats({
         needed: list.filter((i) => i.status === "needed").length,
         urgent: list.filter((i) => i.priority === "urgent" || i.status === "urgent").length,
         budget: Number((budget as { amount?: number } | null)?.amount ?? 0),
-        spent: Number((budget as { spent?: number } | null)?.spent ?? 0),
+        spent: monthSpent,
       });
       setCategories((cats as Category[] | null) ?? []);
     };
@@ -242,6 +261,11 @@ export default function Dashboard() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "budgets", filter: `family_id=eq.${fid}` },
+        load,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "purchase_history", filter: `family_id=eq.${fid}` },
         load,
       )
       .on(
@@ -426,7 +450,9 @@ export default function Dashboard() {
     setNewCatName(""); setNewCatIcon("📦"); setNewCatColor("#3ecf8e"); setAddingCategory(false);
   };
 
-  const budgetPct = stats.budget > 0 ? Math.min(100, Math.round((stats.spent / stats.budget) * 100)) : 0;
+  const budgetPct = stats.budget > 0 ? Math.round((stats.spent / stats.budget) * 100) : 0;
+  const budgetMeter = Math.min(100, budgetPct);
+  const isOverspent = stats.budget > 0 && stats.spent > stats.budget;
 
   return (
     <PageTransition>
@@ -664,11 +690,11 @@ export default function Dashboard() {
             label="Budget used"
             value={`${budgetPct}%`}
             icon={<Wallet size={16} />}
-            accent="#34d399"
-            meter={budgetPct}
+            accent={isOverspent ? "#ef4444" : "#34d399"}
+            meter={budgetMeter}
             subtitle={
               stats.budget > 0
-                ? `₹${stats.spent.toLocaleString("en-IN")} / ₹${stats.budget.toLocaleString("en-IN")}`
+                ? `₹${stats.spent.toLocaleString("en-IN")} / ₹${stats.budget.toLocaleString("en-IN")}${isOverspent ? " · over budget" : ""}`
                 : "No budget set"
             }
             onClick={() => navigate("/budget")}
