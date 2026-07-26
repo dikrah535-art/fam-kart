@@ -1026,3 +1026,26 @@ function BoughtCheck({ checked, onChange }: { checked: boolean; onChange: (v: bo
     </button>
   );
 }
+
+function InviteChip({ code }: { code: string }) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success("Copied!", { description: `Invite code ${code}` });
+    } catch {
+      toast.error("Couldn't copy");
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="group inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 hover:border-primary/50 transition px-3 py-1.5"
+      title="Copy family invite code"
+    >
+      <span className="font-sans text-[10px] uppercase tracking-wider opacity-70">Invite</span>
+      <span className="font-mono tracking-widest text-primary text-sm">{code}</span>
+      <Copy size={13} className="opacity-60 group-hover:opacity-100" />
+    </button>
+  );
+}
