@@ -119,10 +119,20 @@ export default function Dashboard() {
       if (cancelled) return;
       const byNo = new Map<number, Entry>();
       (data as Entry[] | null)?.forEach((r) => byNo.set(r.sr_no, r));
-      const maxNo = Math.max(MIN_ROWS, ...Array.from(byNo.keys(), (n) => n));
-      const merged: Entry[] = [];
-      for (let i = 1; i <= maxNo; i++) merged.push(byNo.get(i) ?? emptyRow(i));
-      setRows(merged);
+      setRows((prev) => {
+        const maxNo = Math.max(MIN_ROWS, prev.length, ...Array.from(byNo.keys()));
+        const merged: Entry[] = [];
+        for (let i = 1; i <= maxNo; i++) {
+          // Preserve local state for rows the user is currently editing —
+          // the realtime echo of their own save must not clobber the cursor.
+          if (focusedRows.current.has(i)) {
+            const local = prev.find((r) => r.sr_no === i);
+            if (local) { merged.push(local); continue; }
+          }
+          merged.push(byNo.get(i) ?? prev.find((r) => r.sr_no === i) ?? emptyRow(i));
+        }
+        return merged;
+      });
     };
 
     const loadNotes = async () => {
@@ -134,11 +144,18 @@ export default function Dashboard() {
       if (cancelled) return;
       const bySlot = new Map<number, Note>();
       (data as Note[] | null)?.forEach((n) => bySlot.set(n.slot_index, n));
-      const maxSlot = Math.max(MIN_NOTES - 1, ...Array.from(bySlot.keys()));
-      const merged: Note[] = [];
-      for (let i = 0; i <= maxSlot; i++)
-        merged.push(bySlot.get(i) ?? { slot_index: i, content: "" });
-      setNotes(merged);
+      setNotes((prev) => {
+        const maxSlot = Math.max(MIN_NOTES - 1, prev.length - 1, ...Array.from(bySlot.keys()));
+        const merged: Note[] = [];
+        for (let i = 0; i <= maxSlot; i++) {
+          if (focusedNotes.current.has(i)) {
+            const local = prev.find((n) => n.slot_index === i);
+            if (local) { merged.push(local); continue; }
+          }
+          merged.push(bySlot.get(i) ?? prev.find((n) => n.slot_index === i) ?? { slot_index: i, content: "" });
+        }
+        return merged;
+      });
     };
 
     loadEntries();
