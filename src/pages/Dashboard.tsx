@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, PackageMinus, Wallet } from "lucide-react";
+import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
@@ -92,7 +92,7 @@ export default function Dashboard() {
   const [newCatIcon, setNewCatIcon] = useState("📦");
   const [newCatColor, setNewCatColor] = useState("#3ecf8e");
   const [categories, setCategories] = useState<Category[]>([]);
-  const [stats, setStats] = useState({ needed: 0, urgent: 0, lowStock: 0, budget: 0, spent: 0 });
+  const [stats, setStats] = useState({ needed: 0, urgent: 0, budget: 0, spent: 0 });
 
   const fid = profile?.family_id ?? null;
 
@@ -225,7 +225,6 @@ export default function Dashboard() {
       setStats({
         needed: list.filter((i) => i.status === "needed").length,
         urgent: list.filter((i) => i.priority === "urgent" || i.status === "urgent").length,
-        lowStock: list.filter((i) => i.status === "low_stock").length,
         budget: Number((budget as { amount?: number } | null)?.amount ?? 0),
         spent: Number((budget as { spent?: number } | null)?.spent ?? 0),
       });
@@ -644,7 +643,7 @@ export default function Dashboard() {
         </section>
 
         {/* Stat Cards */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <StatCard
             label="Items needed"
             value={stats.needed}
@@ -660,14 +659,6 @@ export default function Dashboard() {
             accent="#f87171"
             meter={Math.min(100, stats.urgent * 20)}
             onClick={() => navigate("/shopping?tab=urgent")}
-          />
-          <StatCard
-            label="Low stock"
-            value={stats.lowStock}
-            icon={<PackageMinus size={16} />}
-            accent="#fbbf24"
-            meter={Math.min(100, stats.lowStock * 15)}
-            onClick={() => navigate("/shopping?tab=low_stock")}
           />
           <StatCard
             label="Budget used"
