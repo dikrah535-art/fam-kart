@@ -87,9 +87,17 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskRows, setTaskRows] = useState(3);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [stats, setStats] = useState({ needed: 0, urgent: 0, lowStock: 0, budget: 0, spent: 0 });
+  const [stats, setStats] = useState({ needed: 0, urgent: 0, lowStock: 0 });
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
 
   const fid = profile?.family_id ?? null;
+
+  // Focus tracking — prevents realtime echo from replacing an input the user is typing in.
+  const focusedRows = useRef<Set<number>>(new Set());
+  const focusedNotes = useRef<Set<number>>(new Set());
+
+  const now = new Date();
+  const budget = useBudgetSummary(fid, now.getMonth() + 1, now.getFullYear());
 
   useEffect(() => {
     const t = setTimeout(() => setToday(localDateISO()), msUntilNextLocalMidnight());
