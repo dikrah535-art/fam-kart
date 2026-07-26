@@ -305,8 +305,25 @@ export default function Dashboard() {
   const updateRow = (idx: number, patch: Partial<Entry>, immediate = false) => {
     setRows((prev) => {
       const next = [...prev];
-      next[idx] = { ...next[idx], ...patch };
-      scheduleSaveRow(next[idx], immediate ? 0 : 400);
+      const before = next[idx];
+      const after = { ...before, ...patch };
+      next[idx] = after;
+      scheduleSaveRow(after, immediate ? 0 : 400);
+      // Toast when the bought flag flips — the DB trigger syncs purchase_history,
+      // so this is our confirmation to the user that budget just updated.
+      if (patch.bought !== undefined && patch.bought !== before.bought) {
+        const price = Number(after.price) || 0;
+        const label = after.item_name.trim() || `Row ${after.sr_no}`;
+        if (patch.bought) {
+          toast.success(price > 0
+            ? `Added ₹${price.toLocaleString("en-IN")} to this month's spend`
+            : `Marked "${label}" bought`);
+        } else {
+          toast(price > 0
+            ? `Removed ₹${price.toLocaleString("en-IN")} from this month's spend`
+            : `Unmarked "${label}"`);
+        }
+      }
       return next;
     });
   };
