@@ -1,5 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Home,
   ShoppingCart,
@@ -10,6 +12,8 @@ import {
   CheckSquare,
   Settings,
   LogOut,
+  MoreHorizontal,
+  X,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import QuickAddFab from "@/components/QuickAddFab";
@@ -30,6 +34,7 @@ const nav = [
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { profile, signOut, user } = useAuth();
   const navigate = useNavigate();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -38,6 +43,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   };
 
   const firstName = profile?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
+
+  // Bottom bar only has room for a few icons on mobile — everything else
+  // (To-Do, Notebook, Settings, etc.) used to just be silently unreachable.
+  // Now it lives behind "More" instead of being cut off.
+  const primaryPaths = ["/dashboard", "/shopping", "/todo", "/budget"];
+  const primaryMobileNav = primaryPaths
+    .map((p) => nav.find((n) => n.to === p))
+    .filter(Boolean) as typeof nav;
+  const overflowMobileNav = nav.filter((n) => !primaryPaths.includes(n.to));
 
   return (
     <div className="min-h-screen bg-background dot-grid">
@@ -84,9 +98,62 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
+      {/* Mobile "More" overflow sheet */}
+      <AnimatePresence>
+        {moreOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="lg:hidden fixed inset-0 bg-black/60 z-40"
+              onClick={() => setMoreOpen(false)}
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-sidebar border-t border-border rounded-t-2xl p-4 pb-24"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-white">More</span>
+                <button onClick={() => setMoreOpen(false)} className="text-muted-foreground">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                {overflowMobileNav.map(({ to, label, icon: Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    onClick={() => setMoreOpen(false)}
+                    className={({ isActive }) =>
+                      `flex flex-col items-center gap-1.5 py-3 rounded-lg text-xs ${
+                        isActive ? "text-primary bg-primary/10" : "text-muted-foreground"
+                      }`
+                    }
+                  >
+                    <Icon size={20} />
+                    <span>{label}</span>
+                  </NavLink>
+                ))}
+                <button
+                  onClick={() => { setMoreOpen(false); handleSignOut(); }}
+                  className="flex flex-col items-center gap-1.5 py-3 rounded-lg text-xs text-muted-foreground hover:text-destructive"
+                >
+                  <LogOut size={20} />
+                  <span>Sign out</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-sidebar flex justify-around py-2">
-        {nav.slice(0, 5).map(({ to, icon: Icon, label }) => (
+        {primaryMobileNav.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
@@ -100,6 +167,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <span>{label}</span>
           </NavLink>
         ))}
+        <button
+          onClick={() => setMoreOpen(true)}
+          className="flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs text-muted-foreground"
+        >
+          <MoreHorizontal size={20} />
+          <span>More</span>
+        </button>
       </nav>
 
       <main className="lg:ml-64 min-h-screen pb-20 lg:pb-0">{children}</main>
