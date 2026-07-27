@@ -1158,7 +1158,7 @@ function SplittingBanknoteIcon({ isHovered, color }: { isHovered: boolean; color
     <div className="relative" style={{ width: 30, height: 30, color }}>
       <motion.div
         className="absolute inset-0"
-        animate={{ rotate: isHovered ? -18, x: isHovered ? -4 : 0, y: isHovered ? -2 : 0 } as never}
+        animate={{ rotate: isHovered ? -18 : 0, x: isHovered ? -4 : 0, y: isHovered ? -2 : 0 }}
         transition={{ duration: 0.45, ease: "easeInOut" }}
       >
         <Banknote size={30} />
