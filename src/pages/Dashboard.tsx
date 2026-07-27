@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useAnimation } from "framer-motion";
 import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, Wallet, Copy, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -782,6 +782,7 @@ export default function Dashboard() {
             accent="hsl(var(--primary))"
             meter={Math.min(100, stats.needed * 10)}
             onClick={() => navigate("/shopping?tab=needed")}
+            hoverFx="lid"
           />
           <StatCard
             label="Urgent"
@@ -790,6 +791,7 @@ export default function Dashboard() {
             accent="#f87171"
             meter={Math.min(100, stats.urgent * 20)}
             onClick={() => navigate("/shopping?tab=urgent")}
+            hoverFx="ripple"
           />
           <StatCard
             label="Budget used"
@@ -803,7 +805,9 @@ export default function Dashboard() {
                 : "No budget set"
             }
             onClick={() => navigate("/budget")}
+            hoverFx="wallet"
           />
+
         </section>
 
         {/* Categories */}
@@ -992,6 +996,7 @@ function StatCard({
   meter,
   subtitle,
   onClick,
+  hoverFx,
 }: {
   label: string;
   value: number | string;
@@ -1000,12 +1005,16 @@ function StatCard({
   meter: number;
   subtitle?: string;
   onClick?: () => void;
+  hoverFx?: "lid" | "ripple" | "wallet";
 }) {
+  const [hovered, setHovered] = useState(false);
   return (
     <motion.div
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       onKeyDown={(e) => {
         if (onClick && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onClick(); }
       }}
@@ -1018,13 +1027,24 @@ function StatCard({
         onClick ? "cursor-pointer" : ""
       }`}
     >
-      <div className="flex items-center justify-between text-muted-foreground text-xs">
+      {hoverFx === "ripple" && <RippleLayer isHovered={hovered} color={accent} />}
+      {hoverFx === "wallet" && <FallingNotesLayer isHovered={hovered} />}
+
+      <div className="flex items-center justify-between text-muted-foreground text-xs relative z-10">
         <span>{label}</span>
-        <span style={{ color: accent }}>{icon}</span>
+        <span style={{ color: accent }}>
+          {hoverFx === "lid" ? (
+            <LidBoxIcon isHovered={hovered} color={accent} />
+          ) : hoverFx === "wallet" ? (
+            <OpeningWalletIcon isHovered={hovered} color={accent} />
+          ) : (
+            icon
+          )}
+        </span>
       </div>
-      <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
-      {subtitle && <div className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</div>}
-      <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+      <div className="mt-2 text-2xl font-semibold text-white relative z-10">{value}</div>
+      {subtitle && <div className="text-[11px] text-muted-foreground mt-0.5 relative z-10">{subtitle}</div>}
+      <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden relative z-10">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${meter}%` }}
@@ -1036,6 +1056,144 @@ function StatCard({
     </motion.div>
   );
 }
+
+/** Box with a lid that opens/closes in a loop while hovered, then settles closed. */
+function LidBoxIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
+  const controls = useAnimation();
+  const hoveredRef = useRef(isHovered);
+  hoveredRef.current = isHovered;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // Loop while still hovered; each half-cycle is awaited so leaving mid-loop
+      // finishes the current motion instead of snapping.
+      while (!cancelled && hoveredRef.current) {
+        await controls.start({ rotate: -70, transition: { duration: 0.45, ease: "easeOut" } });
+        if (cancelled || !hoveredRef.current) break;
+        await controls.start({ rotate: 0, transition: { duration: 0.45, ease: "easeIn" } });
+      }
+      if (!cancelled) {
+        // Ensure lid returns to fully closed.
+        await controls.start({ rotate: 0, transition: { duration: 0.35, ease: "easeInOut" } });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isHovered, controls]);
+
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ overflow: "visible" }}>
+      {/* box body */}
+      <path d="M4 11 L4 20 L20 20 L20 11" fill={color} fillOpacity="0.08" />
+      <path d="M4 15 L20 15" opacity="0.35" />
+      {/* lid, hinged at back-left */}
+      <motion.g animate={controls} initial={{ rotate: 0 }} style={{ transformOrigin: "4px 10px", transformBox: "fill-box" as const }}>
+        <path d="M3 10 L21 10 L21 8 L3 8 Z" fill={color} fillOpacity="0.2" />
+      </motion.g>
+    </svg>
+  );
+}
+
+/** Red sonar ripple emitted from the icon corner, expanding to card edge. */
+function RippleLayer({ isHovered, color }: { isHovered: boolean; color: string }) {
+  const [ripples, setRipples] = useState<number[]>([]);
+  useEffect(() => {
+    if (!isHovered) return;
+    const spawn = () => setRipples((r) => [...r, Date.now() + Math.random()]);
+    spawn();
+    const id = setInterval(spawn, 750);
+    return () => clearInterval(id);
+  }, [isHovered]);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+      <AnimatePresence>
+        {ripples.map((r) => (
+          <motion.span
+            key={r}
+            initial={{ scale: 0.2, opacity: 0.55 }}
+            animate={{ scale: 12, opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.6, ease: "easeOut" }}
+            onAnimationComplete={() => setRipples((rs) => rs.filter((x) => x !== r))}
+            className="absolute h-6 w-6 rounded-full border-2"
+            style={{
+              top: 10,
+              right: 10,
+              borderColor: color,
+              boxShadow: `0 0 10px ${color}`,
+            }}
+          />
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** Wallet that unfolds open on the hinge to reveal its interior. */
+function OpeningWalletIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ overflow: "visible" }}>
+      {/* interior revealed when open */}
+      <rect x="4" y="7" width="16" height="12" rx="1.5" fill={color} fillOpacity="0.18" />
+      <path d="M8 11 L16 11 M8 14 L14 14" opacity="0.6" />
+      {/* front flap, hinged on the left, unfolds outward */}
+      <motion.g
+        animate={{ rotateY: isHovered ? -155 : 0 }}
+        transition={{ duration: 0.55, ease: "easeInOut" }}
+        style={{ transformOrigin: "4px 13px", transformBox: "fill-box" as const }}
+      >
+        <rect x="4" y="7" width="16" height="12" rx="1.5" fill="hsl(var(--card))" stroke={color} />
+        <circle cx="16" cy="13" r="1.2" fill={color} />
+      </motion.g>
+    </svg>
+  );
+}
+
+/** Falling ₹ glyphs inside the card while wallet is open. */
+function FallingNotesLayer({ isHovered }: { isHovered: boolean }) {
+  const [notes, setNotes] = useState<{ id: number; x: number; r: number }[]>([]);
+  useEffect(() => {
+    if (!isHovered) return;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    // Small delay so the wallet visibly opens before notes start falling.
+    const delayId = setTimeout(() => {
+      const spawn = () =>
+        setNotes((n) => [
+          ...n,
+          { id: Date.now() + Math.random(), x: 8 + Math.random() * 26, r: -20 + Math.random() * 40 },
+        ]);
+      spawn();
+      intervalId = setInterval(spawn, 380);
+    }, 350);
+    return () => {
+      clearTimeout(delayId);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isHovered]);
+
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+      <AnimatePresence>
+        {notes.map((n) => (
+          <motion.span
+            key={n.id}
+            initial={{ y: -4, opacity: 0, rotate: n.r }}
+            animate={{ y: 140, opacity: [0, 1, 1, 0], rotate: n.r + 35 }}
+            transition={{ duration: 2.2, ease: "easeIn", times: [0, 0.15, 0.75, 1] }}
+            onAnimationComplete={() => setNotes((ns) => ns.filter((x) => x.id !== n.id))}
+            className="absolute text-[11px] font-semibold"
+            style={{ right: n.x, top: 14, color: "#34d399", textShadow: "0 0 6px rgba(52,211,153,0.6)" }}
+          >
+            ₹
+          </motion.span>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 
 function TaskRow({
   task,
