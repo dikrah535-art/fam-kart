@@ -1152,48 +1152,53 @@ function RippleLayer({ isHovered, color }: { isHovered: boolean; color: string }
   );
 }
 
-/** Wallet that unfolds open on the hinge to reveal its interior. */
-function OpeningWalletIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
+/** Two banknotes stacked; on hover they fan apart to look like the note is splitting/opening. */
+function SplittingBanknoteIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ overflow: "visible" }}>
-      {/* interior revealed when open */}
-      <rect x="4" y="7" width="16" height="12" rx="1.5" fill={color} fillOpacity="0.18" />
-      <path d="M8 11 L16 11 M8 14 L14 14" opacity="0.6" />
-      {/* front flap, hinged on the left, unfolds outward */}
-      <motion.g
-        animate={{ rotateY: isHovered ? -155 : 0 }}
-        transition={{ duration: 0.55, ease: "easeInOut" }}
-        style={{ transformOrigin: "4px 13px", transformBox: "fill-box" as const }}
+    <div className="relative" style={{ width: 30, height: 30, color }}>
+      <motion.div
+        className="absolute inset-0"
+        animate={{ rotate: isHovered ? -18, x: isHovered ? -4 : 0, y: isHovered ? -2 : 0 } as never}
+        transition={{ duration: 0.45, ease: "easeInOut" }}
       >
-        <rect x="4" y="7" width="16" height="12" rx="1.5" fill="hsl(var(--card))" stroke={color} />
-        <circle cx="16" cy="13" r="1.2" fill={color} />
-      </motion.g>
-    </svg>
+        <Banknote size={30} />
+      </motion.div>
+      <motion.div
+        className="absolute inset-0"
+        animate={{ rotate: isHovered ? 18 : 0, x: isHovered ? 4 : 0, y: isHovered ? -2 : 0 }}
+        transition={{ duration: 0.45, ease: "easeInOut" }}
+      >
+        <Banknote size={30} />
+      </motion.div>
+    </div>
   );
 }
 
-/** Falling ₹ glyphs inside the card while wallet is open. */
-function FallingNotesLayer({ isHovered }: { isHovered: boolean }) {
-  const [notes, setNotes] = useState<{ id: number; x: number; r: number }[]>([]);
+/** Falling Banknote icons inside the card while hovered; matches accent color. */
+function FallingNotesLayer({ isHovered, color }: { isHovered: boolean; color: string }) {
+  const [notes, setNotes] = useState<{ id: number; x: number; r: number; s: number }[]>([]);
   useEffect(() => {
     if (!isHovered) return;
     let intervalId: ReturnType<typeof setInterval> | null = null;
-    // Small delay so the wallet visibly opens before notes start falling.
     const delayId = setTimeout(() => {
       const spawn = () =>
         setNotes((n) => [
           ...n,
-          { id: Date.now() + Math.random(), x: 8 + Math.random() * 26, r: -20 + Math.random() * 40 },
+          {
+            id: Date.now() + Math.random(),
+            x: 6 + Math.random() * 40,
+            r: -25 + Math.random() * 50,
+            s: 14 + Math.round(Math.random() * 4),
+          },
         ]);
       spawn();
-      intervalId = setInterval(spawn, 380);
-    }, 350);
+      intervalId = setInterval(spawn, 420);
+    }, 300);
     return () => {
       clearTimeout(delayId);
       if (intervalId) clearInterval(intervalId);
     };
   }, [isHovered]);
-
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
@@ -1201,14 +1206,14 @@ function FallingNotesLayer({ isHovered }: { isHovered: boolean }) {
         {notes.map((n) => (
           <motion.span
             key={n.id}
-            initial={{ y: -4, opacity: 0, rotate: n.r }}
-            animate={{ y: 140, opacity: [0, 1, 1, 0], rotate: n.r + 35 }}
-            transition={{ duration: 2.2, ease: "easeIn", times: [0, 0.15, 0.75, 1] }}
+            initial={{ y: -6, opacity: 0, rotate: n.r }}
+            animate={{ y: 150, opacity: [0, 1, 1, 0], rotate: n.r + 40 }}
+            transition={{ duration: 2.4, ease: "easeIn", times: [0, 0.15, 0.75, 1] }}
             onAnimationComplete={() => setNotes((ns) => ns.filter((x) => x.id !== n.id))}
-            className="absolute text-[11px] font-semibold"
-            style={{ right: n.x, top: 14, color: "#34d399", textShadow: "0 0 6px rgba(52,211,153,0.6)" }}
+            className="absolute"
+            style={{ right: n.x, top: 18, color, filter: `drop-shadow(0 0 4px ${color}88)` }}
           >
-            ₹
+            <Banknote size={n.s} />
           </motion.span>
         ))}
       </AnimatePresence>
