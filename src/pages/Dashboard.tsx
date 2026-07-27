@@ -778,7 +778,7 @@ export default function Dashboard() {
           <StatCard
             label="Items needed"
             value={stats.needed}
-            icon={(hovered) => <BoxIcon hovered={hovered} size={30} />}
+            icon={(hovered) => <BoxIcon hovered={hovered} size={34} />}
             accent="hsl(var(--primary))"
             meter={Math.min(100, stats.needed * 10)}
             onClick={() => navigate("/shopping?tab=needed")}
@@ -786,7 +786,7 @@ export default function Dashboard() {
           <StatCard
             label="Urgent"
             value={stats.urgent}
-            icon={<AlertTriangle size={16} />}
+            icon={(hovered) => <UrgentIcon hovered={hovered} size={34} />}
             accent="#f87171"
             meter={Math.min(100, stats.urgent * 20)}
             onClick={() => navigate("/shopping?tab=urgent")}
@@ -794,7 +794,7 @@ export default function Dashboard() {
           <StatCard
             label="Budget used"
             value={`${budgetPct}%`}
-            icon={(hovered) => <WalletIcon hovered={hovered} size={30} />}
+            icon={(hovered) => <WalletIcon hovered={hovered} size={34} />}
             accent={isOverspent ? "#ef4444" : "#34d399"}
             meter={budgetMeter}
             subtitle={
@@ -1070,8 +1070,8 @@ function BoxIcon({ hovered, size = 30 }: { hovered: boolean; size?: number }) {
   );
 }
 
-function WalletIcon({ hovered, size = 30 }: { hovered: boolean; size?: number }) {
-  const notes = [0, 1, 2];
+function WalletIcon({ hovered, size = 34 }: { hovered: boolean; size?: number }) {
+  const notes = [0, 1, 2, 3];
   return (
     <div style={{ position: "relative", width: size, height: size }}>
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ overflow: "visible" }}>
@@ -1081,7 +1081,7 @@ function WalletIcon({ hovered, size = 30 }: { hovered: boolean; size?: number })
           stroke="currentColor"
           strokeWidth="1.6"
           strokeLinejoin="round"
-          animate={hovered ? { x: -4.5 } : { x: 0 }}
+          animate={hovered ? { x: -5 } : { x: 0 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
         />
         {/* right half — rounded on the outer (right) side, flat on the inner seam */}
@@ -1090,7 +1090,7 @@ function WalletIcon({ hovered, size = 30 }: { hovered: boolean; size?: number })
           stroke="currentColor"
           strokeWidth="1.6"
           strokeLinejoin="round"
-          animate={hovered ? { x: 4.5 } : { x: 0 }}
+          animate={hovered ? { x: 5 } : { x: 0 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
         />
         {/* center seam, only visible when closed */}
@@ -1101,21 +1101,53 @@ function WalletIcon({ hovered, size = 30 }: { hovered: boolean; size?: number })
           transition={{ duration: 0.3 }}
         />
       </svg>
-      {hovered && (
-        <div className="absolute left-1/2 top-full pointer-events-none" style={{ width: 1, height: 1 }}>
-          {notes.map((i) => (
-            <motion.div
-              key={i}
-              initial={{ y: 0, x: -6, opacity: 0, rotate: -8 }}
-              animate={{ y: [0, 34], x: [-6, -6 + (i - 1) * 10], opacity: [0, 1, 1, 0], rotate: [-8, 10] }}
-              transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.4, ease: "easeIn" }}
-              style={{ position: "absolute", color: "currentColor" }}
-            >
-              <Banknote size={16} />
-            </motion.div>
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {hovered && (
+          <div className="absolute left-1/2 top-full pointer-events-none" style={{ width: 1, height: 1 }}>
+            {notes.map((i) => (
+              <motion.div
+                key={i}
+                initial={{ y: 0, x: -8, opacity: 0, rotate: -10 }}
+                animate={{ y: [0, 48], x: [-10, -10 + (i - 1.5) * 12], opacity: [0, 1, 1, 0], rotate: [-10, 14] }}
+                exit={{ opacity: 0, transition: { duration: 0.25 } }}
+                transition={{ duration: 1.7, repeat: Infinity, delay: i * 0.35, ease: "easeIn" }}
+                // Notes are always green — cash raining in, independent of
+                // whether the wallet itself is red (overspent) or green.
+                style={{ position: "absolute", color: "#34d399" }}
+              >
+                <Banknote size={20} strokeWidth={2} />
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function UrgentIcon({ hovered, size = 34 }: { hovered: boolean; size?: number }) {
+  return (
+    <div style={{ position: "relative", width: size, height: size }}>
+      <AnimatePresence>
+        {hovered && [0, 1].map((i) => (
+          <motion.span
+            key={i}
+            className="absolute rounded-full"
+            style={{
+              left: "50%",
+              top: "50%",
+              translateX: "-50%",
+              translateY: "-50%",
+              border: "2px solid #f87171",
+            }}
+            initial={{ width: size * 0.5, height: size * 0.5, opacity: 0.9 }}
+            animate={{ width: size * 8, height: size * 8, opacity: 0 }}
+            exit={{ opacity: 0, transition: { duration: 0.25 } }}
+            transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.8, ease: "easeOut" }}
+          />
+        ))}
+      </AnimatePresence>
+      <AlertTriangle size={size} style={{ position: "relative", zIndex: 1 }} />
     </div>
   );
 }
