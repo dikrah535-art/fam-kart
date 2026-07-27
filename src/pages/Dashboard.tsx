@@ -1057,39 +1057,61 @@ function StatCard({
   );
 }
 
-/** Box with a lid that opens/closes in a loop while hovered, then settles closed. */
-function LidBoxIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
-  const controls = useAnimation();
+/** Cardboard box with two top flaps that open outward on their hinges, loop while hovered, then settle closed. */
+function OpeningBoxIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
+  const left = useAnimation();
+  const right = useAnimation();
   const hoveredRef = useRef(isHovered);
   hoveredRef.current = isHovered;
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Loop while still hovered; each half-cycle is awaited so leaving mid-loop
-      // finishes the current motion instead of snapping.
       while (!cancelled && hoveredRef.current) {
-        await controls.start({ rotate: -70, transition: { duration: 0.45, ease: "easeOut" } });
+        await Promise.all([
+          left.start({ rotate: -110, transition: { duration: 0.5, ease: "easeOut" } }),
+          right.start({ rotate: 110, transition: { duration: 0.5, ease: "easeOut" } }),
+        ]);
         if (cancelled || !hoveredRef.current) break;
-        await controls.start({ rotate: 0, transition: { duration: 0.45, ease: "easeIn" } });
+        // brief pause open
+        await new Promise((r) => setTimeout(r, 250));
+        if (cancelled || !hoveredRef.current) break;
+        await Promise.all([
+          left.start({ rotate: 0, transition: { duration: 0.5, ease: "easeIn" } }),
+          right.start({ rotate: 0, transition: { duration: 0.5, ease: "easeIn" } }),
+        ]);
       }
       if (!cancelled) {
-        // Ensure lid returns to fully closed.
-        await controls.start({ rotate: 0, transition: { duration: 0.35, ease: "easeInOut" } });
+        await Promise.all([
+          left.start({ rotate: 0, transition: { duration: 0.4, ease: "easeInOut" } }),
+          right.start({ rotate: 0, transition: { duration: 0.4, ease: "easeInOut" } }),
+        ]);
       }
     })();
     return () => { cancelled = true; };
-  }, [isHovered, controls]);
+  }, [isHovered, left, right]);
 
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ overflow: "visible" }}>
+    <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ overflow: "visible" }}>
       {/* box body */}
-      <path d="M4 11 L4 20 L20 20 L20 11" fill={color} fillOpacity="0.08" />
-      <path d="M4 15 L20 15" opacity="0.35" />
-      {/* lid, hinged at back-left */}
-      <motion.g animate={controls} initial={{ rotate: 0 }} style={{ transformOrigin: "4px 10px", transformBox: "fill-box" as const }}>
-        <path d="M3 10 L21 10 L21 8 L3 8 Z" fill={color} fillOpacity="0.2" />
-      </motion.g>
+      <path d="M5 14 L5 27 L27 27 L27 14 Z" fill={color} fillOpacity="0.1" />
+      <path d="M5 19 L27 19" opacity="0.35" />
+      {/* left flap, hinged at center-top */}
+      <motion.path
+        d="M16 13 L5 13 L5 11 L16 11 Z"
+        fill={color} fillOpacity="0.22"
+        animate={left}
+        initial={{ rotate: 0 }}
+        style={{ transformOrigin: "16px 12px", transformBox: "fill-box" as const }}
+      />
+      {/* right flap, hinged at center-top */}
+      <motion.path
+        d="M16 13 L27 13 L27 11 L16 11 Z"
+        fill={color} fillOpacity="0.22"
+        animate={right}
+        initial={{ rotate: 0 }}
+        style={{ transformOrigin: "16px 12px", transformBox: "fill-box" as const }}
+      />
     </svg>
   );
 }
