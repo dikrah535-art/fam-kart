@@ -1028,15 +1028,15 @@ function StatCard({
       }`}
     >
       {hoverFx === "ripple" && <RippleLayer isHovered={hovered} color={accent} />}
-      {hoverFx === "wallet" && <FallingNotesLayer isHovered={hovered} />}
+      {hoverFx === "wallet" && <FallingNotesLayer isHovered={hovered} color={accent} />}
 
-      <div className="flex items-center justify-between text-muted-foreground text-xs relative z-10">
-        <span>{label}</span>
-        <span style={{ color: accent }}>
+      <div className="flex items-start justify-between gap-3 text-muted-foreground text-xs relative z-10">
+        <span className="pt-1.5">{label}</span>
+        <span className="shrink-0 pr-0.5" style={{ color: accent }}>
           {hoverFx === "lid" ? (
-            <LidBoxIcon isHovered={hovered} color={accent} />
+            <OpeningBoxIcon isHovered={hovered} color={accent} />
           ) : hoverFx === "wallet" ? (
-            <OpeningWalletIcon isHovered={hovered} color={accent} />
+            <SplittingBanknoteIcon isHovered={hovered} color={accent} />
           ) : (
             icon
           )}
