@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useAnimation } from "framer-motion";
-import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, Wallet, Copy, Check } from "lucide-react";
+import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, Wallet, Copy, Check, Banknote } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
