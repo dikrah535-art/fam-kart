@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, useAnimation } from "framer-motion";
-import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, Wallet, Copy, Check, Banknote } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Trash2, CheckCircle2, Circle, AlertTriangle, Banknote, Copy, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
@@ -778,25 +778,23 @@ export default function Dashboard() {
           <StatCard
             label="Items needed"
             value={stats.needed}
-            icon={<ShoppingBag size={30} />}
+            icon={(hovered) => <BoxIcon hovered={hovered} size={30} />}
             accent="hsl(var(--primary))"
             meter={Math.min(100, stats.needed * 10)}
             onClick={() => navigate("/shopping?tab=needed")}
-            hoverFx="lid"
           />
           <StatCard
             label="Urgent"
             value={stats.urgent}
-            icon={<AlertTriangle size={30} />}
+            icon={<AlertTriangle size={16} />}
             accent="#f87171"
             meter={Math.min(100, stats.urgent * 20)}
             onClick={() => navigate("/shopping?tab=urgent")}
-            hoverFx="ripple"
           />
           <StatCard
             label="Budget used"
             value={`${budgetPct}%`}
-            icon={<Banknote size={30} />}
+            icon={(hovered) => <WalletIcon hovered={hovered} size={30} />}
             accent={isOverspent ? "#ef4444" : "#34d399"}
             meter={budgetMeter}
             subtitle={
@@ -805,9 +803,7 @@ export default function Dashboard() {
                 : "No budget set"
             }
             onClick={() => navigate("/budget")}
-            hoverFx="wallet"
           />
-
         </section>
 
         {/* Categories */}
@@ -996,16 +992,14 @@ function StatCard({
   meter,
   subtitle,
   onClick,
-  hoverFx,
 }: {
   label: string;
   value: number | string;
-  icon: React.ReactNode;
+  icon: React.ReactNode | ((hovered: boolean) => React.ReactNode);
   accent: string;
   meter: number;
   subtitle?: string;
   onClick?: () => void;
-  hoverFx?: "lid" | "ripple" | "wallet";
 }) {
   const [hovered, setHovered] = useState(false);
   return (
@@ -1027,24 +1021,13 @@ function StatCard({
         onClick ? "cursor-pointer" : ""
       }`}
     >
-      {hoverFx === "ripple" && <RippleLayer isHovered={hovered} color={accent} />}
-      {hoverFx === "wallet" && <FallingNotesLayer isHovered={hovered} color={accent} />}
-
-      <div className="flex items-start justify-between gap-3 text-muted-foreground text-xs relative z-10">
-        <span className="pt-1.5">{label}</span>
-        <span className="shrink-0 pr-0.5" style={{ color: accent }}>
-          {hoverFx === "lid" ? (
-            <OpeningBoxIcon isHovered={hovered} color={accent} />
-          ) : hoverFx === "wallet" ? (
-            <SplittingBanknoteIcon isHovered={hovered} color={accent} />
-          ) : (
-            icon
-          )}
-        </span>
+      <div className="flex items-center justify-between text-muted-foreground text-xs">
+        <span>{label}</span>
+        <span style={{ color: accent }}>{typeof icon === "function" ? icon(hovered) : icon}</span>
       </div>
-      <div className="mt-2 text-2xl font-semibold text-white relative z-10">{value}</div>
-      {subtitle && <div className="text-[11px] text-muted-foreground mt-0.5 relative z-10">{subtitle}</div>}
-      <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden relative z-10">
+      <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
+      {subtitle && <div className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</div>}
+      <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${meter}%` }}
@@ -1057,170 +1040,75 @@ function StatCard({
   );
 }
 
-/** Cardboard box with two top flaps that open outward on their hinges, loop while hovered, then settle closed. */
-function OpeningBoxIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
-  const left = useAnimation();
-  const right = useAnimation();
-  const hoveredRef = useRef(isHovered);
-  hoveredRef.current = isHovered;
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      while (!cancelled && hoveredRef.current) {
-        await Promise.all([
-          left.start({ rotate: -110, transition: { duration: 0.5, ease: "easeOut" } }),
-          right.start({ rotate: 110, transition: { duration: 0.5, ease: "easeOut" } }),
-        ]);
-        if (cancelled || !hoveredRef.current) break;
-        // brief pause open
-        await new Promise((r) => setTimeout(r, 250));
-        if (cancelled || !hoveredRef.current) break;
-        await Promise.all([
-          left.start({ rotate: 0, transition: { duration: 0.5, ease: "easeIn" } }),
-          right.start({ rotate: 0, transition: { duration: 0.5, ease: "easeIn" } }),
-        ]);
-      }
-      if (!cancelled) {
-        await Promise.all([
-          left.start({ rotate: 0, transition: { duration: 0.4, ease: "easeInOut" } }),
-          right.start({ rotate: 0, transition: { duration: 0.4, ease: "easeInOut" } }),
-        ]);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [isHovered, left, right]);
-
+function BoxIcon({ hovered, size = 30 }: { hovered: boolean; size?: number }) {
   return (
-    <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ overflow: "visible" }}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ overflow: "visible" }}>
       {/* box body */}
-      <path d="M5 14 L5 27 L27 27 L27 14 Z" fill={color} fillOpacity="0.1" />
-      <path d="M5 19 L27 19" opacity="0.35" />
-      {/* left flap, hinged at center-top */}
+      <rect x="3" y="10" width="18" height="11" rx="1.2" stroke="currentColor" strokeWidth="1.6" />
+      <line x1="3" y1="14" x2="21" y2="14" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
+      {/* left flap, hinges at the body's top-left corner */}
       <motion.path
-        d="M16 13 L5 13 L5 11 L16 11 Z"
-        fill={color} fillOpacity="0.22"
-        animate={left}
-        initial={{ rotate: 0 }}
-        style={{ transformOrigin: "16px 12px", transformBox: "fill-box" as const }}
+        d="M3 10 L3 4.5 L11 4.5 L11 10 Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        style={{ transformOrigin: "3px 10px" }}
+        animate={hovered ? { rotate: [0, -38, -38, 0] } : { rotate: 0 }}
+        transition={hovered ? { duration: 1.4, repeat: Infinity, times: [0, 0.3, 0.7, 1], ease: "easeInOut" } : { duration: 0.4, ease: "easeOut" }}
       />
-      {/* right flap, hinged at center-top */}
+      {/* right flap, hinges at the body's top-right corner */}
       <motion.path
-        d="M16 13 L27 13 L27 11 L16 11 Z"
-        fill={color} fillOpacity="0.22"
-        animate={right}
-        initial={{ rotate: 0 }}
-        style={{ transformOrigin: "16px 12px", transformBox: "fill-box" as const }}
+        d="M21 10 L21 4.5 L13 4.5 L13 10 Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        style={{ transformOrigin: "21px 10px" }}
+        animate={hovered ? { rotate: [0, 38, 38, 0] } : { rotate: 0 }}
+        transition={hovered ? { duration: 1.4, repeat: Infinity, times: [0, 0.3, 0.7, 1], ease: "easeInOut" } : { duration: 0.4, ease: "easeOut" }}
       />
     </svg>
   );
 }
 
-/** Red sonar ripple emitted from the icon corner, expanding to card edge. */
-function RippleLayer({ isHovered, color }: { isHovered: boolean; color: string }) {
-  const [ripples, setRipples] = useState<number[]>([]);
-  useEffect(() => {
-    if (!isHovered) return;
-    const spawn = () => setRipples((r) => [...r, Date.now() + Math.random()]);
-    spawn();
-    const id = setInterval(spawn, 750);
-    return () => clearInterval(id);
-  }, [isHovered]);
-
+function WalletIcon({ hovered, size = 30 }: { hovered: boolean; size?: number }) {
+  const notes = [0, 1, 2];
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
-      <AnimatePresence>
-        {ripples.map((r) => (
-          <motion.span
-            key={r}
-            initial={{ scale: 0.2, opacity: 0.55 }}
-            animate={{ scale: 12, opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.6, ease: "easeOut" }}
-            onAnimationComplete={() => setRipples((rs) => rs.filter((x) => x !== r))}
-            className="absolute h-6 w-6 rounded-full border-2"
-            style={{
-              top: 10,
-              right: 10,
-              borderColor: color,
-              boxShadow: `0 0 10px ${color}`,
-            }}
-          />
-        ))}
-      </AnimatePresence>
+    <div style={{ position: "relative", width: size, height: size }}>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ overflow: "visible" }}>
+        {/* fixed back panel of the wallet */}
+        <rect x="4" y="4" width="16" height="16" rx="4" stroke="currentColor" strokeWidth="1.6" opacity="0.55" />
+        {/* front cover — slides open to the left on hover */}
+        <motion.rect
+          x="4" y="4" width="16" height="16" rx="4"
+          stroke="currentColor" strokeWidth="1.6"
+          fill="hsl(var(--card))"
+          animate={hovered ? { x: -6, opacity: 0.92 } : { x: 0, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+        />
+        <motion.circle
+          cx="16" cy="12" r="1.4" fill="currentColor"
+          animate={hovered ? { x: -6, opacity: 0 } : { x: 0, opacity: 1 }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
+        />
+      </svg>
+      {hovered && (
+        <div className="absolute left-1/2 top-full pointer-events-none" style={{ width: 1, height: 1 }}>
+          {notes.map((i) => (
+            <motion.div
+              key={i}
+              initial={{ y: 0, x: -6, opacity: 0, rotate: -8 }}
+              animate={{ y: [0, 34], x: [-6, -6 + (i - 1) * 10], opacity: [0, 1, 1, 0], rotate: [-8, 10] }}
+              transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.4, ease: "easeIn" }}
+              style={{ position: "absolute", color: "currentColor" }}
+            >
+              <Banknote size={16} />
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
-
-/** Two banknotes stacked; on hover they fan apart to look like the note is splitting/opening. */
-function SplittingBanknoteIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
-  return (
-    <div className="relative" style={{ width: 30, height: 30, color }}>
-      <motion.div
-        className="absolute inset-0"
-        animate={{ rotate: isHovered ? -18 : 0, x: isHovered ? -4 : 0, y: isHovered ? -2 : 0 }}
-        transition={{ duration: 0.45, ease: "easeInOut" }}
-      >
-        <Banknote size={30} />
-      </motion.div>
-      <motion.div
-        className="absolute inset-0"
-        animate={{ rotate: isHovered ? 18 : 0, x: isHovered ? 4 : 0, y: isHovered ? -2 : 0 }}
-        transition={{ duration: 0.45, ease: "easeInOut" }}
-      >
-        <Banknote size={30} />
-      </motion.div>
-    </div>
-  );
-}
-
-/** Falling Banknote icons inside the card while hovered; matches accent color. */
-function FallingNotesLayer({ isHovered, color }: { isHovered: boolean; color: string }) {
-  const [notes, setNotes] = useState<{ id: number; x: number; r: number; s: number }[]>([]);
-  useEffect(() => {
-    if (!isHovered) return;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-    const delayId = setTimeout(() => {
-      const spawn = () =>
-        setNotes((n) => [
-          ...n,
-          {
-            id: Date.now() + Math.random(),
-            x: 6 + Math.random() * 40,
-            r: -25 + Math.random() * 50,
-            s: 14 + Math.round(Math.random() * 4),
-          },
-        ]);
-      spawn();
-      intervalId = setInterval(spawn, 420);
-    }, 300);
-    return () => {
-      clearTimeout(delayId);
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [isHovered]);
-
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
-      <AnimatePresence>
-        {notes.map((n) => (
-          <motion.span
-            key={n.id}
-            initial={{ y: -6, opacity: 0, rotate: n.r }}
-            animate={{ y: 150, opacity: [0, 1, 1, 0], rotate: n.r + 40 }}
-            transition={{ duration: 2.4, ease: "easeIn", times: [0, 0.15, 0.75, 1] }}
-            onAnimationComplete={() => setNotes((ns) => ns.filter((x) => x.id !== n.id))}
-            className="absolute"
-            style={{ right: n.x, top: 18, color, filter: `drop-shadow(0 0 4px ${color}88)` }}
-          >
-            <Banknote size={n.s} />
-          </motion.span>
-        ))}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 
 function TaskRow({
   task,
