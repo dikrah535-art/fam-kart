@@ -787,7 +787,7 @@ export default function Dashboard() {
           <StatCard
             label="Urgent"
             value={stats.urgent}
-            icon={<AlertTriangle size={16} />}
+            icon={<AlertTriangle size={30} />}
             accent="#f87171"
             meter={Math.min(100, stats.urgent * 20)}
             onClick={() => navigate("/shopping?tab=urgent")}
