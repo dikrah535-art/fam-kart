@@ -1155,23 +1155,23 @@ function FallingNotesLayer({ isHovered }: { isHovered: boolean }) {
   const [notes, setNotes] = useState<{ id: number; x: number; r: number }[]>([]);
   useEffect(() => {
     if (!isHovered) return;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
     // Small delay so the wallet visibly opens before notes start falling.
-    const delay = setTimeout(() => {
+    const delayId = setTimeout(() => {
       const spawn = () =>
         setNotes((n) => [
           ...n,
           { id: Date.now() + Math.random(), x: 8 + Math.random() * 26, r: -20 + Math.random() * 40 },
         ]);
       spawn();
-      const id = setInterval(spawn, 380);
-      (delay as unknown as { _id?: NodeJS.Timeout })._id = id as unknown as NodeJS.Timeout;
+      intervalId = setInterval(spawn, 380);
     }, 350);
     return () => {
-      clearTimeout(delay);
-      const id = (delay as unknown as { _id?: NodeJS.Timeout })._id;
-      if (id) clearInterval(id);
+      clearTimeout(delayId);
+      if (intervalId) clearInterval(intervalId);
     };
   }, [isHovered]);
+
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
