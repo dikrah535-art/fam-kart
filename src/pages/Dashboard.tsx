@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useAnimation } from "framer-motion";
-import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, Wallet, Copy, Check } from "lucide-react";
+import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, Wallet, Copy, Check, Banknote } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
@@ -778,7 +778,7 @@ export default function Dashboard() {
           <StatCard
             label="Items needed"
             value={stats.needed}
-            icon={<ShoppingBag size={16} />}
+            icon={<ShoppingBag size={30} />}
             accent="hsl(var(--primary))"
             meter={Math.min(100, stats.needed * 10)}
             onClick={() => navigate("/shopping?tab=needed")}
@@ -787,7 +787,7 @@ export default function Dashboard() {
           <StatCard
             label="Urgent"
             value={stats.urgent}
-            icon={<AlertTriangle size={16} />}
+            icon={<AlertTriangle size={30} />}
             accent="#f87171"
             meter={Math.min(100, stats.urgent * 20)}
             onClick={() => navigate("/shopping?tab=urgent")}
@@ -796,7 +796,7 @@ export default function Dashboard() {
           <StatCard
             label="Budget used"
             value={`${budgetPct}%`}
-            icon={<Wallet size={16} />}
+            icon={<Banknote size={30} />}
             accent={isOverspent ? "#ef4444" : "#34d399"}
             meter={budgetMeter}
             subtitle={
@@ -1028,15 +1028,15 @@ function StatCard({
       }`}
     >
       {hoverFx === "ripple" && <RippleLayer isHovered={hovered} color={accent} />}
-      {hoverFx === "wallet" && <FallingNotesLayer isHovered={hovered} />}
+      {hoverFx === "wallet" && <FallingNotesLayer isHovered={hovered} color={accent} />}
 
-      <div className="flex items-center justify-between text-muted-foreground text-xs relative z-10">
-        <span>{label}</span>
-        <span style={{ color: accent }}>
+      <div className="flex items-start justify-between gap-3 text-muted-foreground text-xs relative z-10">
+        <span className="pt-1.5">{label}</span>
+        <span className="shrink-0 pr-0.5" style={{ color: accent }}>
           {hoverFx === "lid" ? (
-            <LidBoxIcon isHovered={hovered} color={accent} />
+            <OpeningBoxIcon isHovered={hovered} color={accent} />
           ) : hoverFx === "wallet" ? (
-            <OpeningWalletIcon isHovered={hovered} color={accent} />
+            <SplittingBanknoteIcon isHovered={hovered} color={accent} />
           ) : (
             icon
           )}
@@ -1057,39 +1057,61 @@ function StatCard({
   );
 }
 
-/** Box with a lid that opens/closes in a loop while hovered, then settles closed. */
-function LidBoxIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
-  const controls = useAnimation();
+/** Cardboard box with two top flaps that open outward on their hinges, loop while hovered, then settle closed. */
+function OpeningBoxIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
+  const left = useAnimation();
+  const right = useAnimation();
   const hoveredRef = useRef(isHovered);
   hoveredRef.current = isHovered;
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Loop while still hovered; each half-cycle is awaited so leaving mid-loop
-      // finishes the current motion instead of snapping.
       while (!cancelled && hoveredRef.current) {
-        await controls.start({ rotate: -70, transition: { duration: 0.45, ease: "easeOut" } });
+        await Promise.all([
+          left.start({ rotate: -110, transition: { duration: 0.5, ease: "easeOut" } }),
+          right.start({ rotate: 110, transition: { duration: 0.5, ease: "easeOut" } }),
+        ]);
         if (cancelled || !hoveredRef.current) break;
-        await controls.start({ rotate: 0, transition: { duration: 0.45, ease: "easeIn" } });
+        // brief pause open
+        await new Promise((r) => setTimeout(r, 250));
+        if (cancelled || !hoveredRef.current) break;
+        await Promise.all([
+          left.start({ rotate: 0, transition: { duration: 0.5, ease: "easeIn" } }),
+          right.start({ rotate: 0, transition: { duration: 0.5, ease: "easeIn" } }),
+        ]);
       }
       if (!cancelled) {
-        // Ensure lid returns to fully closed.
-        await controls.start({ rotate: 0, transition: { duration: 0.35, ease: "easeInOut" } });
+        await Promise.all([
+          left.start({ rotate: 0, transition: { duration: 0.4, ease: "easeInOut" } }),
+          right.start({ rotate: 0, transition: { duration: 0.4, ease: "easeInOut" } }),
+        ]);
       }
     })();
     return () => { cancelled = true; };
-  }, [isHovered, controls]);
+  }, [isHovered, left, right]);
 
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ overflow: "visible" }}>
+    <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ overflow: "visible" }}>
       {/* box body */}
-      <path d="M4 11 L4 20 L20 20 L20 11" fill={color} fillOpacity="0.08" />
-      <path d="M4 15 L20 15" opacity="0.35" />
-      {/* lid, hinged at back-left */}
-      <motion.g animate={controls} initial={{ rotate: 0 }} style={{ transformOrigin: "4px 10px", transformBox: "fill-box" as const }}>
-        <path d="M3 10 L21 10 L21 8 L3 8 Z" fill={color} fillOpacity="0.2" />
-      </motion.g>
+      <path d="M5 14 L5 27 L27 27 L27 14 Z" fill={color} fillOpacity="0.1" />
+      <path d="M5 19 L27 19" opacity="0.35" />
+      {/* left flap, hinged at center-top */}
+      <motion.path
+        d="M16 13 L5 13 L5 11 L16 11 Z"
+        fill={color} fillOpacity="0.22"
+        animate={left}
+        initial={{ rotate: 0 }}
+        style={{ transformOrigin: "16px 12px", transformBox: "fill-box" as const }}
+      />
+      {/* right flap, hinged at center-top */}
+      <motion.path
+        d="M16 13 L27 13 L27 11 L16 11 Z"
+        fill={color} fillOpacity="0.22"
+        animate={right}
+        initial={{ rotate: 0 }}
+        style={{ transformOrigin: "16px 12px", transformBox: "fill-box" as const }}
+      />
     </svg>
   );
 }
@@ -1130,48 +1152,53 @@ function RippleLayer({ isHovered, color }: { isHovered: boolean; color: string }
   );
 }
 
-/** Wallet that unfolds open on the hinge to reveal its interior. */
-function OpeningWalletIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
+/** Two banknotes stacked; on hover they fan apart to look like the note is splitting/opening. */
+function SplittingBanknoteIcon({ isHovered, color }: { isHovered: boolean; color: string }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ overflow: "visible" }}>
-      {/* interior revealed when open */}
-      <rect x="4" y="7" width="16" height="12" rx="1.5" fill={color} fillOpacity="0.18" />
-      <path d="M8 11 L16 11 M8 14 L14 14" opacity="0.6" />
-      {/* front flap, hinged on the left, unfolds outward */}
-      <motion.g
-        animate={{ rotateY: isHovered ? -155 : 0 }}
-        transition={{ duration: 0.55, ease: "easeInOut" }}
-        style={{ transformOrigin: "4px 13px", transformBox: "fill-box" as const }}
+    <div className="relative" style={{ width: 30, height: 30, color }}>
+      <motion.div
+        className="absolute inset-0"
+        animate={{ rotate: isHovered ? -18 : 0, x: isHovered ? -4 : 0, y: isHovered ? -2 : 0 }}
+        transition={{ duration: 0.45, ease: "easeInOut" }}
       >
-        <rect x="4" y="7" width="16" height="12" rx="1.5" fill="hsl(var(--card))" stroke={color} />
-        <circle cx="16" cy="13" r="1.2" fill={color} />
-      </motion.g>
-    </svg>
+        <Banknote size={30} />
+      </motion.div>
+      <motion.div
+        className="absolute inset-0"
+        animate={{ rotate: isHovered ? 18 : 0, x: isHovered ? 4 : 0, y: isHovered ? -2 : 0 }}
+        transition={{ duration: 0.45, ease: "easeInOut" }}
+      >
+        <Banknote size={30} />
+      </motion.div>
+    </div>
   );
 }
 
-/** Falling ₹ glyphs inside the card while wallet is open. */
-function FallingNotesLayer({ isHovered }: { isHovered: boolean }) {
-  const [notes, setNotes] = useState<{ id: number; x: number; r: number }[]>([]);
+/** Falling Banknote icons inside the card while hovered; matches accent color. */
+function FallingNotesLayer({ isHovered, color }: { isHovered: boolean; color: string }) {
+  const [notes, setNotes] = useState<{ id: number; x: number; r: number; s: number }[]>([]);
   useEffect(() => {
     if (!isHovered) return;
     let intervalId: ReturnType<typeof setInterval> | null = null;
-    // Small delay so the wallet visibly opens before notes start falling.
     const delayId = setTimeout(() => {
       const spawn = () =>
         setNotes((n) => [
           ...n,
-          { id: Date.now() + Math.random(), x: 8 + Math.random() * 26, r: -20 + Math.random() * 40 },
+          {
+            id: Date.now() + Math.random(),
+            x: 6 + Math.random() * 40,
+            r: -25 + Math.random() * 50,
+            s: 14 + Math.round(Math.random() * 4),
+          },
         ]);
       spawn();
-      intervalId = setInterval(spawn, 380);
-    }, 350);
+      intervalId = setInterval(spawn, 420);
+    }, 300);
     return () => {
       clearTimeout(delayId);
       if (intervalId) clearInterval(intervalId);
     };
   }, [isHovered]);
-
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
@@ -1179,14 +1206,14 @@ function FallingNotesLayer({ isHovered }: { isHovered: boolean }) {
         {notes.map((n) => (
           <motion.span
             key={n.id}
-            initial={{ y: -4, opacity: 0, rotate: n.r }}
-            animate={{ y: 140, opacity: [0, 1, 1, 0], rotate: n.r + 35 }}
-            transition={{ duration: 2.2, ease: "easeIn", times: [0, 0.15, 0.75, 1] }}
+            initial={{ y: -6, opacity: 0, rotate: n.r }}
+            animate={{ y: 150, opacity: [0, 1, 1, 0], rotate: n.r + 40 }}
+            transition={{ duration: 2.4, ease: "easeIn", times: [0, 0.15, 0.75, 1] }}
             onAnimationComplete={() => setNotes((ns) => ns.filter((x) => x.id !== n.id))}
-            className="absolute text-[11px] font-semibold"
-            style={{ right: n.x, top: 14, color: "#34d399", textShadow: "0 0 6px rgba(52,211,153,0.6)" }}
+            className="absolute"
+            style={{ right: n.x, top: 18, color, filter: `drop-shadow(0 0 4px ${color}88)` }}
           >
-            ₹
+            <Banknote size={n.s} />
           </motion.span>
         ))}
       </AnimatePresence>
