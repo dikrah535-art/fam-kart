@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, Wallet } from "lucide-react";
+import { Trash2, CheckCircle2, Circle, ShoppingBag, AlertTriangle, Wallet, Copy, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
@@ -88,6 +88,8 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskRows, setTaskRows] = useState(3);
   const [addingCategory, setAddingCategory] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [newCatIcon, setNewCatIcon] = useState("📦");
   const [newCatColor, setNewCatColor] = useState("#3ecf8e");
@@ -95,6 +97,28 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ needed: 0, urgent: 0, budget: 0, spent: 0 });
 
   const fid = profile?.family_id ?? null;
+
+  useEffect(() => {
+    if (!fid) return;
+    let cancelled = false;
+    supabase
+      .from("families")
+      .select("invite_code")
+      .eq("id", fid)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setInviteCode((data as { invite_code?: string } | null)?.invite_code ?? null);
+      });
+    return () => { cancelled = true; };
+  }, [fid]);
+
+  const copyInviteCode = async () => {
+    if (!inviteCode) return;
+    await navigator.clipboard.writeText(inviteCode);
+    setCopied(true);
+    toast.success("Copied!");
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setToday(localDateISO()), msUntilNextLocalMidnight());
@@ -504,14 +528,29 @@ export default function Dashboard() {
         {/* Unified Family Notebook */}
         <section className="paper-dark rounded-2xl pl-16 pr-6 md:pr-10 py-5 space-y-4">
           {/* Greeting */}
-          <div>
-            <h1 className="font-hand text-3xl md:text-4xl leading-tight min-h-[1.2em]">
-              {typed}
-              {typed.length < greet.length && <span className="animate-pulse">|</span>}
-            </h1>
-            <p className="font-hand text-lg md:text-xl mt-0.5 opacity-80 leading-tight min-h-[1.2em]">
-              {typedDate}
-            </p>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="font-hand text-3xl md:text-4xl leading-tight min-h-[1.2em]">
+                {typed}
+                {typed.length < greet.length && <span className="animate-pulse">|</span>}
+              </h1>
+              <p className="font-hand text-lg md:text-xl mt-0.5 opacity-80 leading-tight min-h-[1.2em]">
+                {typedDate}
+              </p>
+            </div>
+            {inviteCode && (
+              <button
+                type="button"
+                onClick={copyInviteCode}
+                title="Copy family invite code"
+                className="font-sans text-xs shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-black/20 hover:border-primary/50 hover:bg-primary/10 transition"
+                style={{ color: "#e8d5b0" }}
+              >
+                <span className="opacity-60">Family code</span>
+                <span className="font-semibold tracking-wider">{inviteCode}</span>
+                {copied ? <Check size={13} className="text-primary" /> : <Copy size={13} className="opacity-60" />}
+              </button>
+            )}
           </div>
 
           {/* Instant Writing List */}
