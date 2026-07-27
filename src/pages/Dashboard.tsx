@@ -782,6 +782,7 @@ export default function Dashboard() {
             accent="hsl(var(--primary))"
             meter={Math.min(100, stats.needed * 10)}
             onClick={() => navigate("/shopping?tab=needed")}
+            hoverFx="lid"
           />
           <StatCard
             label="Urgent"
@@ -790,6 +791,7 @@ export default function Dashboard() {
             accent="#f87171"
             meter={Math.min(100, stats.urgent * 20)}
             onClick={() => navigate("/shopping?tab=urgent")}
+            hoverFx="ripple"
           />
           <StatCard
             label="Budget used"
@@ -803,7 +805,9 @@ export default function Dashboard() {
                 : "No budget set"
             }
             onClick={() => navigate("/budget")}
+            hoverFx="wallet"
           />
+
         </section>
 
         {/* Categories */}
