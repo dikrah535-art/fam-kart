@@ -1053,8 +1053,8 @@ function BoxIcon({ hovered, size = 30 }: { hovered: boolean; size?: number }) {
         strokeWidth="1.6"
         strokeLinejoin="round"
         style={{ transformOrigin: "3px 10px" }}
-        animate={hovered ? { rotate: [0, -38, -38, 0] } : { rotate: 0 }}
-        transition={hovered ? { duration: 1.4, repeat: Infinity, times: [0, 0.3, 0.7, 1], ease: "easeInOut" } : { duration: 0.4, ease: "easeOut" }}
+        animate={hovered ? { rotate: [0, -115, -115, 0] } : { rotate: 0 }}
+        transition={hovered ? { duration: 1.8, repeat: Infinity, times: [0, 0.35, 0.75, 1], ease: "easeInOut" } : { duration: 0.4, ease: "easeOut" }}
       />
       {/* right flap, hinges at the body's top-right corner */}
       <motion.path
@@ -1063,8 +1063,8 @@ function BoxIcon({ hovered, size = 30 }: { hovered: boolean; size?: number }) {
         strokeWidth="1.6"
         strokeLinejoin="round"
         style={{ transformOrigin: "21px 10px" }}
-        animate={hovered ? { rotate: [0, 38, 38, 0] } : { rotate: 0 }}
-        transition={hovered ? { duration: 1.4, repeat: Infinity, times: [0, 0.3, 0.7, 1], ease: "easeInOut" } : { duration: 0.4, ease: "easeOut" }}
+        animate={hovered ? { rotate: [0, 115, 115, 0] } : { rotate: 0 }}
+        transition={hovered ? { duration: 1.8, repeat: Infinity, times: [0, 0.35, 0.75, 1], ease: "easeInOut" } : { duration: 0.4, ease: "easeOut" }}
       />
     </svg>
   );
@@ -1075,20 +1075,30 @@ function WalletIcon({ hovered, size = 30 }: { hovered: boolean; size?: number })
   return (
     <div style={{ position: "relative", width: size, height: size }}>
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ overflow: "visible" }}>
-        {/* fixed back panel of the wallet */}
-        <rect x="4" y="4" width="16" height="16" rx="4" stroke="currentColor" strokeWidth="1.6" opacity="0.55" />
-        {/* front cover — slides open to the left on hover */}
-        <motion.rect
-          x="4" y="4" width="16" height="16" rx="4"
-          stroke="currentColor" strokeWidth="1.6"
-          fill="hsl(var(--card))"
-          animate={hovered ? { x: -6, opacity: 0.92 } : { x: 0, opacity: 1 }}
+        {/* left half — rounded on the outer (left) side, flat on the inner seam */}
+        <motion.path
+          d="M12 4 H8 a4 4 0 0 0 -4 4 v8 a4 4 0 0 0 4 4 h4 Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+          animate={hovered ? { x: -4.5 } : { x: 0 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
         />
-        <motion.circle
-          cx="16" cy="12" r="1.4" fill="currentColor"
-          animate={hovered ? { x: -6, opacity: 0 } : { x: 0, opacity: 1 }}
-          transition={{ duration: 0.4, ease: "easeInOut" }}
+        {/* right half — rounded on the outer (right) side, flat on the inner seam */}
+        <motion.path
+          d="M12 4 H16 a4 4 0 0 1 4 4 v8 a4 4 0 0 1 -4 4 h-4 Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+          animate={hovered ? { x: 4.5 } : { x: 0 }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+        />
+        {/* center seam, only visible when closed */}
+        <motion.line
+          x1="12" y1="5" x2="12" y2="19"
+          stroke="currentColor" strokeWidth="1.2"
+          animate={{ opacity: hovered ? 0 : 0.6 }}
+          transition={{ duration: 0.3 }}
         />
       </svg>
       {hovered && (
