@@ -796,7 +796,7 @@ export default function Dashboard() {
           <StatCard
             label="Budget used"
             value={`${budgetPct}%`}
-            icon={<Wallet size={16} />}
+            icon={<Banknote size={30} />}
             accent={isOverspent ? "#ef4444" : "#34d399"}
             meter={budgetMeter}
             subtitle={
