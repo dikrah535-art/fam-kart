@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, Save } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeft, Save, Pencil, X, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
 import { supabase } from "@/lib/supabase";
@@ -32,6 +32,8 @@ export default function Budget() {
 
   const [amountDraft, setAmountDraft] = useState<string>("");
   const [cats, setCats] = useState<Category[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [visibleKeys, setVisibleKeys] = useState<Set<string> | null>(null);
 
   // Single source of truth for amount + spend + history (realtime).
   const { amount, spent: monthSpent, remaining, pct, history } = useBudgetSummary(fid, month, year);
@@ -52,6 +54,31 @@ export default function Budget() {
       });
     return () => { cancelled = true; };
   }, [fid]);
+
+  // Which category bars show in "By category" — a personal display
+  // preference, saved locally so it sticks between visits on this device.
+  useEffect(() => {
+    if (!fid) return;
+    try {
+      const raw = localStorage.getItem(`famkart:budget:visibleCats:${fid}`);
+      setVisibleKeys(raw ? new Set(JSON.parse(raw)) : null);
+    } catch {
+      setVisibleKeys(null);
+    }
+  }, [fid]);
+
+  const toggleVisibleKey = (key: string) => {
+    if (!fid) return;
+    setVisibleKeys((prev) => {
+      const allKeys = new Set(["all", ...cats.map((c) => c.id)]);
+      const base = prev ?? allKeys; // starting from "everything visible"
+      const next = new Set(base);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      localStorage.setItem(`famkart:budget:visibleCats:${fid}`, JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
 
   // History for the 6-month trend (broader window than the hook's monthly slice).
   const [trendHistory, setTrendHistory] = useState<HistoryRow[]>([]);
@@ -86,14 +113,15 @@ export default function Budget() {
         return d.getMonth() + 1 === month && d.getFullYear() === year;
       })
       .forEach((r) => {
-        const key = r.category_id ?? "uncategorized";
+        const key = r.category_id ?? "all";
         map.set(key, (map.get(key) ?? 0) + Number(r.cost || 0));
       });
     const nameOf = new Map(cats.map((c) => [c.id, c.name]));
     return Array.from(map.entries())
-      .map(([id, v]) => ({ name: id === "uncategorized" ? "Uncategorized" : nameOf.get(id) ?? "Other", value: Math.round(v) }))
+      .filter(([key]) => !visibleKeys || visibleKeys.has(key))
+      .map(([id, v]) => ({ key: id, name: id === "all" ? "All" : nameOf.get(id) ?? "Other", value: Math.round(v) }))
       .sort((a, b) => b.value - a.value);
-  }, [history, cats, month, year]);
+  }, [history, cats, month, year, visibleKeys]);
 
   const donut = amount > 0
     ? [{ name: "Spent", value: Math.min(monthSpent, amount) }, { name: "Remaining", value: remaining }]
@@ -205,8 +233,59 @@ export default function Budget() {
         </div>
 
         {/* Charts */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <ChartCard title="By category" subtitle="This month">
+        <div className="space-y-4">
+          <ChartCard
+            title="By category"
+            subtitle="This month"
+            action={
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen((v) => !v)}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md border border-white/10 text-muted-foreground hover:text-white hover:border-primary/50 transition"
+                >
+                  <Pencil size={12} /> Edit
+                </button>
+                <AnimatePresence>
+                  {pickerOpen && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setPickerOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        className="absolute right-0 top-full mt-2 z-40 w-56 rounded-lg border border-border bg-card shadow-xl p-2"
+                      >
+                        <p className="text-[11px] text-muted-foreground px-2 pb-1.5">
+                          Tick what shows in this chart
+                        </p>
+                        {[{ id: "all", name: "All" }, ...cats].map((c) => {
+                          const checked = !visibleKeys || visibleKeys.has(c.id);
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => toggleVisibleKey(c.id)}
+                              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left hover:bg-muted/60 transition"
+                            >
+                              <span
+                                className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${
+                                  checked ? "bg-primary border-primary" : "border-white/20"
+                                }`}
+                              >
+                                {checked && <Check size={11} className="text-black" />}
+                              </span>
+                              <span className="truncate">{c.name}</span>
+                            </button>
+                          );
+                        })}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            }
+          >
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={catData} margin={{ left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a"/>
@@ -221,18 +300,46 @@ export default function Budget() {
           </ChartCard>
 
           <ChartCard title="Used vs remaining" subtitle="Current month">
-            <ResponsiveContainer width="100%" height={240}>
-              <PieChart>
-                <Pie data={donut} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={2}>
-                  <Cell fill={health}/>
-                  <Cell fill="#2a2a2a"/>
-                </Pie>
-                <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8 }} itemStyle={{ color: "#e5e5e5" }} labelStyle={{ color: "#e5e5e5" }}/>
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="relative shrink-0" style={{ width: 260, height: 260 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={donut} dataKey="value" nameKey="name" innerRadius={85} outerRadius={125} paddingAngle={2}>
+                      <Cell fill={health}/>
+                      <Cell fill="#2a2a2a"/>
+                    </Pie>
+                    <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8 }} itemStyle={{ color: "#e5e5e5" }} labelStyle={{ color: "#e5e5e5" }}/>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-3xl font-bold text-white">{pct}%</span>
+                  <span className="text-xs text-muted-foreground">used</span>
+                </div>
+              </div>
+              <div className="flex-1 w-full space-y-2">
+                <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: health }} /> Spent
+                  </span>
+                  <span className="text-sm font-semibold" style={{ color: health }}>
+                    ₹{monthSpent.toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#2a2a2a] border border-white/10" /> Remaining
+                  </span>
+                  <span className="text-sm font-semibold text-white">₹{remaining.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+                  <span className="text-sm text-muted-foreground">Budget</span>
+                  <span className="text-sm font-semibold text-white">₹{amount.toLocaleString("en-IN")}</span>
+                </div>
+              </div>
+            </div>
           </ChartCard>
 
-          <ChartCard title="6-month trend" subtitle="Total spent per month" className="lg:col-span-2">
+          <ChartCard title="6-month trend" subtitle="Total spent per month">
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={trend} margin={{ left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a"/>
@@ -258,12 +365,15 @@ function Metric({ label, value, accent }: { label: string; value: string; accent
   );
 }
 
-function ChartCard({ title, subtitle, children, className = "" }: { title: string; subtitle?: string; children: React.ReactNode; className?: string }) {
+function ChartCard({ title, subtitle, children, className = "", action }: { title: string; subtitle?: string; children: React.ReactNode; className?: string; action?: React.ReactNode }) {
   return (
     <div className={`rounded-xl border border-border bg-card p-4 ${className}`}>
-      <div className="mb-3">
-        <div className="text-sm font-semibold text-white">{title}</div>
-        {subtitle && <div className="text-xs text-muted-foreground">{subtitle}</div>}
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold text-white">{title}</div>
+          {subtitle && <div className="text-xs text-muted-foreground">{subtitle}</div>}
+        </div>
+        {action}
       </div>
       {children}
     </div>
