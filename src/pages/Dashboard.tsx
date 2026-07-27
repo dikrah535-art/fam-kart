@@ -778,7 +778,7 @@ export default function Dashboard() {
           <StatCard
             label="Items needed"
             value={stats.needed}
-            icon={<ShoppingBag size={16} />}
+            icon={<ShoppingBag size={30} />}
             accent="hsl(var(--primary))"
             meter={Math.min(100, stats.needed * 10)}
             onClick={() => navigate("/shopping?tab=needed")}
