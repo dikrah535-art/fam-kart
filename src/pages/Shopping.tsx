@@ -34,10 +34,22 @@ export default function Shopping() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const initialTab = params.get("tab") ?? "all";
+  const categoryFilter = params.get("category");
   const [tab, setTab] = useState(initialTab);
   const [items, setItems] = useState<Item[]>([]);
   const [buyItem, setBuyItem] = useState<Item | null>(null);
   const [price, setPrice] = useState("");
+  const [filterCategoryName, setFilterCategoryName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!categoryFilter) { setFilterCategoryName(null); return; }
+    supabase
+      .from("categories")
+      .select("name")
+      .eq("id", categoryFilter)
+      .maybeSingle()
+      .then(({ data }) => setFilterCategoryName((data as { name?: string } | null)?.name ?? null));
+  }, [categoryFilter]);
 
   useEffect(() => {
     if (!profile?.family_id) return;
@@ -67,12 +79,13 @@ export default function Shopping() {
   }, [profile?.family_id]);
 
   const filtered = useMemo(() => {
-    const sorted = [...items].sort((a, b) => (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3));
+    let sorted = [...items].sort((a, b) => (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3));
+    if (categoryFilter) sorted = sorted.filter((i) => i.category_id === categoryFilter);
     if (tab === "all") return sorted;
     if (tab === "urgent") return sorted.filter((i) => i.priority === "urgent" || i.status === "urgent");
     if (tab === "needed") return sorted.filter((i) => i.status === "needed");
     return sorted;
-  }, [items, tab]);
+  }, [items, tab, categoryFilter]);
 
   const openBuy = (i: Item) => {
     setBuyItem(i);
@@ -127,8 +140,22 @@ export default function Shopping() {
 
         <div className="flex items-baseline justify-between mb-6">
           <h1 className="text-3xl font-bold text-white">Shopping List</h1>
-          <span className="text-sm text-muted-foreground">{items.length} items</span>
+          <span className="text-sm text-muted-foreground">{filtered.length} items</span>
         </div>
+
+        {categoryFilter && (
+          <div className="mb-4 inline-flex items-center gap-2 text-sm bg-primary/10 border border-primary/30 text-primary rounded-full px-3 py-1.5">
+            <span>Category: {filterCategoryName ?? "…"}</span>
+            <button
+              type="button"
+              onClick={() => navigate("/shopping")}
+              className="hover:opacity-70 transition"
+              title="Clear category filter"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
           {tabs.map((t) => (
