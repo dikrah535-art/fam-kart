@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Trash2, CheckCircle2, Circle, AlertTriangle, Banknote, Copy, Check } from "lucide-react";
+import { Trash2, CheckCircle2, Circle, PlusCircle, AlertTriangle, Banknote, Copy, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
@@ -715,7 +715,7 @@ export default function Dashboard() {
               </a>
             </div>
             <div className="paper-line flex items-center gap-2">
-              <Circle size={18} className="opacity-50 shrink-0" />
+              <PlusCircle size={18} className="opacity-50 shrink-0" />
               <input
                 type="text"
                 placeholder="Type and press Enter to add a task…"
@@ -723,7 +723,18 @@ export default function Dashboard() {
                   if (e.key === "Enter" && e.currentTarget.value.trim() && fid && user) {
                     const title = e.currentTarget.value.trim();
                     e.currentTarget.value = "";
-                    await supabase.from("notebook_tasks").insert({ family_id: fid, title, created_by: user.id });
+                    const { data, error } = await supabase
+                      .from("notebook_tasks")
+                      .insert({ family_id: fid, title, created_by: user.id })
+                      .select()
+                      .single();
+                    if (error) {
+                      toast.error(error.message);
+                      return;
+                    }
+                    // Don't wait on realtime to show it — add it straight to the
+                    // list so the task (and its tick button) appear instantly.
+                    setTasks((prev) => (prev.some((t) => t.id === data.id) ? prev : [...prev, data as Task]));
                   }
                 }}
                 className="flex-1 bg-transparent outline-none font-hand text-xl placeholder:opacity-40"
