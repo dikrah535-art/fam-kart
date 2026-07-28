@@ -302,7 +302,7 @@ export default function Dashboard() {
         .reduce((s, r) => s + Number(r.cost || 0), 0);
       setStats({
         needed: list.filter((i) => i.status === "needed").length,
-        urgent: list.filter((i) => i.priority === "urgent" || i.status === "urgent").length,
+        urgent: list.filter((i) => i.status !== "stocked" && (i.priority === "urgent" || i.status === "urgent")).length,
         budget: Number((budget as { amount?: number } | null)?.amount ?? 0),
         spent: monthSpent,
       });
@@ -887,8 +887,15 @@ export default function Dashboard() {
               {categories.map((c) => (
                 <motion.div
                   key={c.id}
-                  whileHover={{ y: -2 }}
-                  className="rounded-lg border border-border bg-background/40 px-4 py-3 transition"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/shopping?category=${c.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/shopping?category=${c.id}`); }
+                  }}
+                  whileHover={{ y: -2, borderColor: c.color ?? "hsl(var(--primary))" }}
+                  whileTap={{ scale: 0.97 }}
+                  className="rounded-lg border border-border bg-background/40 px-4 py-3 transition cursor-pointer"
                 >
                   <div
                     className="h-8 w-8 rounded-md flex items-center justify-center text-lg mb-2"
