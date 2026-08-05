@@ -36,7 +36,7 @@ export default function Budget() {
   const [visibleKeys, setVisibleKeys] = useState<Set<string> | null>(null);
 
   // Single source of truth for amount + spend + history (realtime).
-  const { amount, spent: monthSpent, remaining, pct, history } = useBudgetSummary(fid, month, year);
+  const { amount, spent: monthSpent, purchases, emi, remaining, pct, history } = useBudgetSummary(fid, month, year);
 
   useEffect(() => {
     setAmountDraft(amount ? String(amount) : "");
@@ -197,8 +197,10 @@ export default function Budget() {
             >
               <Save size={14}/> Save
             </button>
-            <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-              Spent so far: <span className="text-white font-medium">₹{monthSpent.toLocaleString("en-IN")}</span>
+            <div className="text-xs text-muted-foreground pt-2 border-t border-border space-y-1">
+              <div>Purchases &amp; bills: <span className="text-white font-medium">₹{purchases.toLocaleString("en-IN")}</span></div>
+              <div>Active EMIs: <span className="text-white font-medium">₹{emi.toLocaleString("en-IN")}</span></div>
+              <div>Spent so far: <span className="text-white font-medium">₹{monthSpent.toLocaleString("en-IN")}</span></div>
             </div>
           </div>
 

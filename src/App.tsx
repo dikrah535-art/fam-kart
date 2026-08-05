@@ -14,6 +14,8 @@ import Notebook from "@/pages/Notebook";
 import Todo from "@/pages/Todo";
 import History from "@/pages/History";
 import Budget from "@/pages/Budget";
+import Finance from "@/pages/Finance";
+import Mobility from "@/pages/Mobility";
 import Categories from "@/pages/Categories";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
@@ -55,6 +57,8 @@ export default function App() {
         <Route path="/to-do" element={<Protected><Todo /></Protected>} />
         <Route path="/history" element={<Protected><History /></Protected>} />
         <Route path="/budget" element={<Protected><Budget /></Protected>} />
+        <Route path="/finance" element={<Protected><Finance /></Protected>} />
+        <Route path="/mobility" element={<Protected><Mobility /></Protected>} />
         <Route path="/categories" element={<Protected><Categories /></Protected>} />
         <Route path="/settings" element={<Protected><Settings /></Protected>} />
         <Route path="*" element={<NotFound />} />
